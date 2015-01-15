@@ -622,6 +622,7 @@ static int ovl_parse_opt(char *opt, struct ovl_config *config)
 			break;
 
 		default:
+			pr_err("overlayfs: unrecognized mount option \"%s\" or missing value\n", p);
 			return -EINVAL;
 		}
 	}
