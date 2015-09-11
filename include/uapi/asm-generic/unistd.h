@@ -711,9 +711,11 @@ __SYSCALL(__NR_bpf, sys_bpf)
 __SYSCALL(__NR_execveat, sys_ni_syscall)
 #define __NR_userfaultfd 282
 __SYSCALL(__NR_userfaultfd, sys_userfaultfd)
+#define __NR_membarrier 283
+__SYSCALL(__NR_membarrier, sys_membarrier)
 
 #undef __NR_syscalls
-#define __NR_syscalls 283
+#define __NR_syscalls 284
 /*
  * All syscalls below here should go away really,
  * these are provided for both review and as a porting
