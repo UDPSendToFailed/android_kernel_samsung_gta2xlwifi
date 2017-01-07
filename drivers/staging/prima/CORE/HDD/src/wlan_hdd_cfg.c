@@ -4131,6 +4131,65 @@ typedef struct
    char *value;
 }tCfgIniEntry;
 
+
+VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
+{
+	int status;
+	const struct firmware *fw = NULL;
+	VOS_STATUS vos_status = VOS_STATUS_E_FAILURE;
+	int ret;
+	char mac_str_buf[32];
+	size_t len_to_copy;
+
+	if (!pHddCtx || !pHddCtx->parent_dev || !pHddCtx->cfg_ini) {
+		hddLog(VOS_TRACE_LEVEL_FATAL, FL("Invalid context pointers"));
+		return VOS_STATUS_E_INVAL;
+	}
+
+	status = request_firmware(&fw, WLAN_MAC_FILE, pHddCtx->parent_dev);
+	if (status) {
+		hddLog(VOS_TRACE_LEVEL_WARN, FL("request_firmware failed %d for %s"),
+		       status, WLAN_MAC_FILE);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	if (fw == NULL || fw->data == NULL || fw->size == 0) {
+		hddLog(VOS_TRACE_LEVEL_FATAL, FL("Invalid firmware data for %s"), WLAN_MAC_FILE);
+		release_firmware(fw);
+		return VOS_STATUS_E_INVAL;
+	}
+
+	len_to_copy = min_t(size_t, fw->size, sizeof(mac_str_buf) - 1);
+	memcpy(mac_str_buf, fw->data, len_to_copy);
+	mac_str_buf[len_to_copy] = '\0';
+
+	mac_str_buf[strcspn(mac_str_buf, "\n\r")] = 0;
+
+	ret = sscanf(mac_str_buf, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[0],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[1],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[2],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[3],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[4],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[5]);
+
+	if (ret == VOS_MAC_ADDR_SIZE) {
+		if (!vos_is_macaddr_zero(&pHddCtx->cfg_ini->intfMacAddr[0])) {
+			vos_status = VOS_STATUS_SUCCESS;
+			hddLog(VOS_TRACE_LEVEL_INFO, FL("Using MAC %s from %s"),
+			       mac_str_buf, WLAN_MAC_FILE);
+		} else {
+			hddLog(VOS_TRACE_LEVEL_ERROR, FL("Parsed zero MAC from %s"), WLAN_MAC_FILE);
+		}
+	} else {
+		hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failed to parse MAC string '%s' (ret=%d) from %s"),
+		       mac_str_buf, ret, WLAN_MAC_FILE);
+	}
+
+	release_firmware(fw);
+	return vos_status;
+}
+
 static VOS_STATUS hdd_apply_cfg_ini( hdd_context_t * pHddCtx,
     tCfgIniEntry* iniTable, unsigned long entries);
 
