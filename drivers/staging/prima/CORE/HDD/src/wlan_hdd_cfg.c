@@ -50,6 +50,8 @@
 
 #include <linux/firmware.h>
 #include <linux/string.h>
+#include <linux/fs.h>
+#include <asm/uaccess.h>
 #include <wlan_hdd_includes.h>
 #include <wlan_hdd_main.h>
 #include <wlan_hdd_assoc.h>
@@ -4158,6 +4160,90 @@ typedef struct
    char *name;
    char *value;
 }tCfgIniEntry;
+
+
+static int hdd_read_mac_file(const char *path, char *buf, size_t buflen)
+{
+	struct file *filp;
+	mm_segment_t old_fs;
+	int rd_len;
+
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	filp = filp_open(path, O_RDONLY, 0);
+	if (IS_ERR(filp)) {
+		set_fs(old_fs);
+		return PTR_ERR(filp);
+	}
+
+	rd_len = kernel_read(filp, 0, buf, buflen - 1);
+	filp_close(filp, NULL);
+	set_fs(old_fs);
+
+	if (rd_len > 0)
+		buf[rd_len] = '\0';
+
+	return rd_len;
+}
+
+VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
+{
+	VOS_STATUS vos_status = VOS_STATUS_E_FAILURE;
+	int ret;
+	char mac_str_buf[32];
+	int rd_len;
+	const char *mac_path = NULL;
+
+	if (!pHddCtx || !pHddCtx->cfg_ini) {
+		hddLog(VOS_TRACE_LEVEL_FATAL, FL("Invalid context pointers"));
+		return VOS_STATUS_E_INVAL;
+	}
+
+	rd_len = hdd_read_mac_file(WLAN_MAC_FILE, mac_str_buf,
+				   sizeof(mac_str_buf));
+	if (rd_len > 0) {
+		mac_path = WLAN_MAC_FILE;
+	} else {
+		pr_info("wlan: %s not accessible (err %d), trying %s\n",
+			WLAN_MAC_FILE, rd_len, WLAN_MAC_FILE_VENDOR);
+		rd_len = hdd_read_mac_file(WLAN_MAC_FILE_VENDOR, mac_str_buf,
+					   sizeof(mac_str_buf));
+		if (rd_len > 0)
+			mac_path = WLAN_MAC_FILE_VENDOR;
+	}
+
+	if (rd_len <= 0) {
+		pr_err("wlan: Failed to read MAC from %s or %s\n",
+		       WLAN_MAC_FILE, WLAN_MAC_FILE_VENDOR);
+		return VOS_STATUS_E_FAILURE;
+	}
+
+	mac_str_buf[strcspn(mac_str_buf, "\n\r")] = '\0';
+
+	ret = sscanf(mac_str_buf, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[0],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[1],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[2],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[3],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[4],
+		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[5]);
+
+	if (ret == VOS_MAC_ADDR_SIZE) {
+		if (!vos_is_macaddr_zero(&pHddCtx->cfg_ini->intfMacAddr[0])) {
+			vos_status = VOS_STATUS_SUCCESS;
+			pr_info("wlan: WLAN Mac Addr from %s: %s\n",
+				mac_path, mac_str_buf);
+		} else {
+			pr_err("wlan: Parsed zero MAC from %s\n", mac_path);
+		}
+	} else {
+		pr_err("wlan: Failed to parse MAC '%s' (ret=%d) from %s\n",
+		       mac_str_buf, ret, mac_path);
+	}
+
+	return vos_status;
+}
 
 static VOS_STATUS hdd_apply_cfg_ini( hdd_context_t * pHddCtx,
     tCfgIniEntry* iniTable, unsigned long entries);
