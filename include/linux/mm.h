@@ -2238,5 +2238,25 @@ extern void free_memsize_reserved(phys_addr_t free_base, phys_addr_t free_size);
 extern void record_memsize_reserved(const char *name, phys_addr_t base,
 				    phys_addr_t size, bool nomap,
 				    bool reusable);
+
+
+#ifdef CONFIG_MEMBARRIER
+enum {
+	MEMBARRIER_STATE_PRIVATE_EXPEDITED_READY	= (1U << 0),
+	MEMBARRIER_STATE_SWITCH_MM			= (1U << 1),
+};
+
+
+static inline void membarrier_execve(struct mm_struct *mm)
+{
+        if (mm) atomic_set(&mm->membarrier_state, 0);
+}
+#else
+static inline void membarrier_execve(struct mm_struct *mm)
+{
+}
+#endif
+
+
 #endif /* __KERNEL__ */
 #endif /* _LINUX_MM_H */

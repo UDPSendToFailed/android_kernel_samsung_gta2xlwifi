@@ -1589,6 +1589,7 @@ static int do_execve_common(struct filename *filename,
 	/* execve succeeded */
 	current->fs->in_exec = 0;
 	current->in_execve = 0;
+	membarrier_execve(current->mm);
 	acct_update_integrals(current);
 	task_numa_free(current);
 	free_bprm(bprm);
