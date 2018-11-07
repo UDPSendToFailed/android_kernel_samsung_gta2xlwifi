@@ -28,18 +28,18 @@ DEFINE_MSM_MUTEX(msm_actuator_mutex);
 #else
 #define CDBG(fmt, args...) do { } while (0)
 #endif
-#define CONFIG_J8PLUS_ACTUATOR
 
-#if defined(CONFIG_J8PLUS_ACTUATOR)
-#define PARK_LENS_LONG_STEP 60
-#define PARK_LENS_MID_STEP 40
-#define PARK_LENS_SMALL_STEP 30
-#else
 #define PARK_LENS_LONG_STEP 7
 #define PARK_LENS_MID_STEP 5
 #define PARK_LENS_SMALL_STEP 3
-#endif
+
 #define MAX_QVALUE 4096
+
+#if defined(CONFIG_SEC_GTA2XLLTE_PROJECT) || defined(CONFIG_SEC_GTA2XLWIFI_PROJECT)
+#define PARK_LENS_QUIET_UPPER_CODE 500
+#define PARK_LENS_QUIET_LOWER_CODE 100
+#define PARK_LENS_QUIET_STEP 10
+#endif
 
 static struct v4l2_file_operations msm_actuator_v4l2_subdev_fops;
 static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl);
@@ -832,9 +832,6 @@ static int32_t msm_actuator_park_lens(struct msm_actuator_ctrl_t *a_ctrl)
 {
 	int32_t rc = 0;
 	uint16_t next_lens_pos = 0;
-#if defined(CONFIG_J8PLUS_ACTUATOR)
-	struct msm_camera_i2c_reg_array i2c_tbl;
-#endif
 	struct msm_camera_i2c_reg_setting reg_setting;
 
 	a_ctrl->i2c_tbl_index = 0;
@@ -852,95 +849,41 @@ static int32_t msm_actuator_park_lens(struct msm_actuator_ctrl_t *a_ctrl)
 	if (a_ctrl->park_lens.max_step > a_ctrl->max_code_size)
 		a_ctrl->park_lens.max_step = a_ctrl->max_code_size;
 
-#if defined(CONFIG_J8PLUS_ACTUATOR)
-
-			CDBG("%s CONFIG_J2Y18_ACTUATOR %d\n",
-				__func__, __LINE__);
-	i2c_tbl.reg_addr = 0x07;
-	i2c_tbl.reg_data = 0x00;
-	i2c_tbl.delay = a_ctrl->park_lens.damping_delay;
-	a_ctrl->i2c_tbl_index++;
-
-	reg_setting.reg_setting = &i2c_tbl;
-	reg_setting.size = a_ctrl->i2c_tbl_index;
-	reg_setting.data_type = 1;
-	rc = a_ctrl->i2c_client.
-		i2c_func_tbl->i2c_write_table_w_microdelay(
-		&a_ctrl->i2c_client, &reg_setting);
-	if (rc < 0) {
-		pr_err("i2c write error:%d\n", rc);
-		return rc;
-	}
-	a_ctrl->i2c_tbl_index = 0;
-#endif
-
 	next_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
 	while (next_lens_pos) {
 		/* conditions which help to reduce park lens time */
+#if defined(CONFIG_SEC_GTA2XLLTE_PROJECT) || defined(CONFIG_SEC_GTA2XLWIFI_PROJECT)
+		if (next_lens_pos > PARK_LENS_QUIET_UPPER_CODE)
+			next_lens_pos = PARK_LENS_QUIET_UPPER_CODE;
+		else {
+			if (next_lens_pos > PARK_LENS_QUIET_LOWER_CODE)
+				next_lens_pos -= PARK_LENS_QUIET_STEP;
+			else
+				next_lens_pos = 0;
+		}
+#else
 		if (next_lens_pos > (a_ctrl->park_lens.max_step *
 			PARK_LENS_LONG_STEP)) {
-#if defined(CONFIG_J8PLUS_ACTUATOR)
-			CDBG("%s CONFIG_J2Y18_ACTUATOR 1 %d, current_pos: %d\n",
-				__func__, __LINE__, next_lens_pos);
-			next_lens_pos = next_lens_pos -
-				(a_ctrl->park_lens.max_step *
-				8);
-#else
-			pr_err("%s None CONFIG_J2Y18_ACTUATOR %d\n",
-				__func__, __LINE__);
-
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_LONG_STEP);
-#endif
 		} else if (next_lens_pos > (a_ctrl->park_lens.max_step *
 			PARK_LENS_MID_STEP)) {
-#if defined(CONFIG_J8PLUS_ACTUATOR)
-			CDBG("%s CONFIG_J2Y18_ACTUATOR %d, current_pos: %d\n",
-				__func__, __LINE__, next_lens_pos);
-
-			next_lens_pos = next_lens_pos -
-				(a_ctrl->park_lens.max_step *
-				4);
-#else
-			pr_err("%s None CONFIG_J2Y18_ACTUATOR %d\n",
-				__func__, __LINE__);
-
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_MID_STEP);
-#endif
 		} else if (next_lens_pos > (a_ctrl->park_lens.max_step *
 			PARK_LENS_SMALL_STEP)) {
-#if defined(CONFIG_J8PLUS_ACTUATOR)
-			CDBG("%s CONFIG_J2Y18_ACTUATOR %d, current_pos: %d\n",
-				__func__, __LINE__, next_lens_pos);
-			next_lens_pos = next_lens_pos -
-				(a_ctrl->park_lens.max_step *
-				2);
-#else
-			pr_err("%s None CONFIG_J2Y18_ACTUATOR %d\n",
-				__func__, __LINE__);
-
 			next_lens_pos = next_lens_pos -
 				(a_ctrl->park_lens.max_step *
 				PARK_LENS_SMALL_STEP);
-#endif
 		} else {
-
-#if defined(CONFIG_J8PLUS_ACTUATOR)
-	if (next_lens_pos < 100)
-		break;
-#endif
-
-			CDBG("%s CONFIG_J2Y18_ACTUATOR %d, current_pos: %d\n",
-				__func__, __LINE__, next_lens_pos);
-			
 			next_lens_pos = (next_lens_pos >
 				a_ctrl->park_lens.max_step) ?
 				(next_lens_pos - a_ctrl->park_lens.
 				max_step) : 0;
 		}
+#endif
 		a_ctrl->func_tbl->actuator_parse_i2c_params(a_ctrl,
 			next_lens_pos, a_ctrl->park_lens.hw_params,
 			a_ctrl->park_lens.damping_delay);
