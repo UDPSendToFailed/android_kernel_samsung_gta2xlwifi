@@ -617,6 +617,7 @@ static void fastrpc_mmap_add_global(struct fastrpc_mmap *map)
 {
 	struct fastrpc_apps *me = &gfa;
 	unsigned long irq_flags = 0;
+
 	spin_lock_irqsave(&me->hlock, irq_flags);
 	hlist_add_head(&map->hn, &me->maps);
 	spin_unlock_irqrestore(&me->hlock, irq_flags);
@@ -638,6 +639,7 @@ static int fastrpc_mmap_find(struct fastrpc_file *fl, int fd,
 
 	if ((va + len) < va)
 		return -EOVERFLOW;
+
 	hlist_for_each_entry_safe(map, n, &fl->maps, hn) {
 		if (va >= map->va &&
 			va + len <= map->va + map->len &&
@@ -1013,7 +1015,6 @@ static int fastrpc_mmap_create(struct fastrpc_file *fl, int fd,
 		map->va = va;
 	}
 	map->len = len;
-
 	if ((mflags != ADSP_MMAP_HEAP_ADDR) &&
 			(mflags != ADSP_MMAP_REMOTE_HEAP_ADDR))
 		fastrpc_mmap_add(map);
