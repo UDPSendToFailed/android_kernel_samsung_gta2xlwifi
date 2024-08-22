@@ -366,7 +366,6 @@ struct fastrpc_mmap {
 	unsigned int ctx_refs; /* Indicates reference count for context map */
 	/* Map in use for dma handle */
 	unsigned int dma_handle_refs;
-
 };
 
 enum fastrpc_perfkeys {
