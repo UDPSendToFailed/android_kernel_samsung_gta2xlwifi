@@ -146,7 +146,7 @@ static struct pm_qos_request lpm_bias_pm_qos_request;
 #define DVFS_TOUCH_ID	0
 int set_freq_limit(unsigned long id, unsigned int freq)
 {
-	pr_err("%s is not yet implemented\n", __func__);
+	//pr_err("%s is not yet implemented\n", __func__);
 	return 0;
 }
 #endif
