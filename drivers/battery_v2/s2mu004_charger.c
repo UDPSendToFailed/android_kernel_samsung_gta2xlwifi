@@ -41,9 +41,6 @@
 #define DEFAULT_CHARGING_CURRENT 500
 #define EOC_SLEEP 200
 #define EOC_TIMEOUT (EOC_SLEEP * 6)
-#ifndef EN_TEST_READ
-#define EN_TEST_READ 0
-#endif
 #define ENABLE 1
 #define DISABLE 0
 extern unsigned int lpcharge;
@@ -78,31 +75,6 @@ static int s2mu004_get_JIG_USB_ON(char *val)
 }
 __setup("JIG_USB_ON=", s2mu004_get_JIG_USB_ON);
 #endif
-static void s2mu004_test_read(struct i2c_client *i2c)
-{
-	u8 data;
-	char str[1016] = {0,};
-	int i;
-	
-	for (i = 0x02; i <= 0x24; i++) {
-		if (i > 0x03 && i < 0x0A)
-			continue;
-		
-		s2mu004_read_reg(i2c, i, &data);
-	}
-	s2mu004_read_reg(i2c, 0x33, &data);
-	s2mu004_read_reg(i2c, 0x91, &data);
-	/* check bypass mode */
-	s2mu004_read_reg(i2c, 0x29, &data);
-	s2mu004_read_reg(i2c, 0x2F, &data);
-	s2mu004_read_reg(i2c, 0x71, &data);
-	s2mu004_read_reg(i2c, 0x72, &data);
-	s2mu004_read_reg(i2c, 0x8B, &data);
-	s2mu004_read_reg(i2c, 0x93, &data);
-	s2mu004_read_reg(i2c, 0x94, &data);
-	s2mu004_read_reg(i2c, 0x9F, &data);
-	s2mu004_read_reg(i2c, 0xC6, &data);
-}
 static int s2mu004_charger_otg_control(struct s2mu004_charger_data *charger, bool enable)
 {
 	u8 chg_sts2, chg_ctrl0, temp;
@@ -418,9 +390,6 @@ static void s2mu004_set_input_current_limit(struct s2mu004_charger_data *charger
 	}
 	mutex_unlock(&charger->charger_mutex);
 	pr_debug("[DEBUG]%s: current  %d, 0x%x\n", __func__, charging_current, data);
-#if EN_TEST_READ
-	s2mu004_test_read(charger->i2c);
-#endif
 }
 static int s2mu004_get_input_current_limit(struct s2mu004_charger_data *charger)
 {
@@ -471,9 +440,6 @@ static void s2mu004_set_fast_charging_current(struct s2mu004_charger_data *charg
 		data = 0x11; /* 0x11 : 450mA */
 	s2mu004_update_reg(charger->i2c, S2MU004_CHG_CTRL8,
 		data << COOL_CHARGING_CURRENT_SHIFT, COOL_CHARGING_CURRENT_MASK);
-#if EN_TEST_READ
-	s2mu004_test_read(charger->i2c);
-#endif
 }
 static int s2mu004_get_fast_charging_current(struct s2mu004_charger_data *charger)
 {
@@ -648,9 +614,6 @@ static int s2mu004_get_charging_status(struct s2mu004_charger_data *charger)
 		status = POWER_SUPPLY_STATUS_CHARGING;
 	else
 		status = POWER_SUPPLY_STATUS_NOT_CHARGING;
-#if EN_TEST_READ
-	s2mu004_test_read(charger->i2c);
-#endif
 
 	return status;
 }
@@ -878,7 +841,6 @@ static int s2mu004_chg_get_property(struct power_supply *psy, enum power_supply_
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		val->intval = s2mu004_get_charging_health(charger);
-		s2mu004_test_read(charger->i2c);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = s2mu004_get_input_current_limit(charger);
@@ -989,9 +951,6 @@ static int s2mu004_chg_set_property(struct power_supply *psy, enum power_supply_
 		pr_debug("[DEBUG] %s: is_charging(%d)\n", __func__, charger->is_charging);
 		charger->charging_current = val->intval;
 		s2mu004_set_fast_charging_current(charger, charger->charging_current);
-#if EN_TEST_READ
-		s2mu004_test_read(charger->i2c);
-#endif
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		break;
@@ -1711,7 +1670,6 @@ static int s2mu004_charger_probe(struct platform_device *pdev)
 		dev_err(charger->dev, "%s : Failed to create_attrs\n", __func__);
 		goto err_reg_irq;
 	}
-	s2mu004_test_read(charger->i2c);
 	pr_debug("%s:[BATT] S2MU004 charger driver loaded OK\n", __func__);
 	return 0;
 err_reg_irq:

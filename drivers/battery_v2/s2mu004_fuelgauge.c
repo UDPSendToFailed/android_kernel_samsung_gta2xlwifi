@@ -114,25 +114,6 @@ static int s2mu004_read_reg(struct i2c_client *client, int reg, u8 *buf)
 
 	return ret;
 }
-static void s2mu004_fg_test_read(struct i2c_client *client)
-{
-	u8 data;
-	char str[1016] = {0,};
-	int i;
-	
-	/* address 0x00 ~ 0x1f */
-	for (i = 0x0; i <= 0x1F; i++) {
-		s2mu004_read_reg_byte(client, i, &data);
-		sprintf(str+strlen(str), "0x%02x:0x%02x, ", i, data);
-	}
-	/* address 0x25 */
-	s2mu004_read_reg_byte(client, 0x25, &data);
-	sprintf(str+strlen(str), "0x25:0x%02x, ", data);
-	/* address 0x27 */
-	s2mu004_read_reg_byte(client, 0x27, &data);
-	sprintf(str+strlen(str), "0x27:0x%02x, ", data);
-	/* print buffer */
-}
 static void WA_0_issue_at_init(struct s2mu004_fuelgauge_data *fuelgauge)
 {
 	int a = 0;
@@ -771,7 +752,6 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 #endif
 	/* S2MU004 FG debug */
 	if (fuelgauge->pdata->fg_log_enable)
-		s2mu004_fg_test_read(fuelgauge->i2c);
 	return min(fuelgauge->info.soc, 10000);
 err:
 	mutex_unlock(&fuelgauge->fg_lock);
