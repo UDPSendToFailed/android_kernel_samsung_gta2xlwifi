@@ -29,7 +29,7 @@
 #include <linux/rcupdate.h>
 #include "input-compat.h"
 
-#if !defined(CONFIG_INPUT_BOOSTER) // Input Booster +
+#ifndef CONFIG_CPU_BOOST // Input Booster +
 #include <linux/input/input.h>
 #endif // Input Booster -
 
@@ -410,7 +410,7 @@ static void input_handle_event(struct input_dev *dev,
 }
 
 
-#if !defined(CONFIG_INPUT_BOOSTER) // Input Booster +
+#ifndef CONFIG_CPU_BOOST // Input Booster +
 // ********** Define Timeout Functions ********** //
 DECLARE_TIMEOUT_FUNC(touch);
 DECLARE_TIMEOUT_FUNC(multitouch);
@@ -783,7 +783,9 @@ void input_booster_init()
 		INIT_SYSFS_DEVICE(pen)
 		INIT_SYSFS_DEVICE(hover)
 	}
+#ifndef CONFIG_CPU_BOOST
 	pm_qos_add_request(&lpm_bias_pm_qos_request, PM_QOS_HIST_BIAS, PM_QOS_DEFAULT_VALUE);
+#endif
 }
 #endif  // Input Booster -
 
@@ -816,7 +818,7 @@ void input_event(struct input_dev *dev,
 		input_handle_event(dev, type, code, value);
 		spin_unlock_irqrestore(&dev->event_lock, flags);
 
-#if !defined(CONFIG_INPUT_BOOSTER) // Input Booster +
+#ifndef CONFIG_CPU_BOOST // Input Booster +
 		if(device_tree_infor != NULL) {
 			if (type == EV_SYN && input_count > 0) {
 				pr_debug("[Input Booster1] ==============================================\n");
@@ -2928,7 +2930,7 @@ static int __init input_init(void)
 		goto fail2;
 	}
 
-#if !defined(CONFIG_INPUT_BOOSTER) // Input Booster +
+#ifndef CONFIG_CPU_BOOST // Input Booster +
 	input_booster_init();
 #endif  // Input Booster -
 
@@ -2942,7 +2944,9 @@ static int __init input_init(void)
 static void __exit input_exit(void)
 {
 	input_proc_exit();
+#ifndef CONFIG_CPU_BOOST
 	pm_qos_remove_request(&lpm_bias_pm_qos_request);
+#endif
 	unregister_chrdev_region(MKDEV(INPUT_MAJOR, 0),
 				 INPUT_MAX_CHAR_DEVICES);
 	class_unregister(&input_class);
