@@ -407,6 +407,11 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 # GCC flags to tune generated code for ROSY's Cortex-A53 CPU
 KBUILD_CFLAGS += -march=armv8-a -mtune=cortex-a53
 
+KBUILD_CFLAGS += -funroll-loops -finline-functions -funswitch-loops \
+				 -fpeel-loops -fprefetch-loop-arrays -falign-functions=16 \
+				 -falign-loops=16 -falign-jumps=16 -fschedule-insns2 -fipa-pta \
+				 -fmodulo-sched -fgraphite-identity
+
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
