@@ -1237,6 +1237,9 @@ static int32_t msm_actuator_init_step_table(struct msm_actuator_ctrl_t *a_ctrl,
 				cur_code = step_index * code_per_step / qvalue;
 			else
 				cur_code = step_index * code_per_step;
+
+            cur_code = cur_code * 10 / 7;
+
 			cur_code += set_info->af_tuning_params.initial_code;
 			if (cur_code < max_code_size)
 				a_ctrl->step_position_table[step_index] =
