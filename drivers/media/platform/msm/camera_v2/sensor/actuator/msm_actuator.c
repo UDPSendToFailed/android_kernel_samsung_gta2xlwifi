@@ -20,6 +20,9 @@
 #include "msm_sensor.h"
 #endif
 
+#include <linux/sysfs.h>
+#include <linux/kobject.h>
+
 DEFINE_MSM_MUTEX(msm_actuator_mutex);
 
 #undef CDBG
@@ -59,6 +62,8 @@ static struct msm_actuator *actuators[] = {
 	&msm_bivcm_actuator_table,
 	&msm_hall_effect_actuator_table,
 };
+
+static struct msm_actuator_ctrl_t *g_actuator_ctrl = NULL;
 
 static int32_t msm_actuator_piezo_set_default_focus(
 	struct msm_actuator_ctrl_t *a_ctrl,
@@ -598,6 +603,11 @@ static int32_t msm_actuator_move_focus(
 	int32_t num_steps = move_params->num_steps;
 	struct msm_camera_i2c_reg_setting reg_setting;
 
+    if (a_ctrl->manual_focus) {
+        pr_info("msm_actuator_move_focus: Manual focus active, disabling autofocus function\n");
+        return 0;
+    }
+
 	CDBG("called, dir %d, num_steps %d\n", dir, num_steps);
 
 	if ((dest_step_pos == a_ctrl->curr_step_pos) ||
@@ -708,6 +718,172 @@ static int32_t msm_actuator_move_focus(
 
 	return rc;
 }
+
+static int32_t manual_focus_move_focus(
+    struct msm_actuator_ctrl_t *a_ctrl,
+    struct msm_actuator_move_params_t *move_params)
+{
+    int32_t rc = 0;
+    int8_t sign_dir = move_params->sign_dir;
+    uint16_t step_boundary = 0;
+    uint16_t target_step_pos = 0;
+    uint16_t target_lens_pos = 0;
+    int16_t dest_step_pos = move_params->dest_step_pos;
+    uint16_t curr_lens_pos = 0;
+    int dir = move_params->dir;
+    struct msm_camera_i2c_reg_setting reg_setting;
+
+    static struct damping_params_t manual_focus_damping_params = {
+        .damping_step = 10,
+        .damping_delay = 0,
+        .hw_params = 0,
+    };
+
+    pr_debug("manual_focus_move_focus called, dir %d, num_steps %d\n", dir, move_params->num_steps);
+
+    curr_lens_pos = a_ctrl->step_position_table[a_ctrl->curr_step_pos];
+    a_ctrl->i2c_tbl_index = 0;
+    pr_debug("manual_focus_move_focus: curr_step_pos=%d, dest_step_pos=%d, curr_lens_pos=%d\n",
+           a_ctrl->curr_step_pos, dest_step_pos, curr_lens_pos);
+
+    while (a_ctrl->curr_step_pos != dest_step_pos) {
+        if (a_ctrl->curr_region_index >= a_ctrl->region_size)
+            break;
+        step_boundary = a_ctrl->region_params[a_ctrl->curr_region_index].step_bound[dir];
+        if ((dest_step_pos * sign_dir) <= (step_boundary * sign_dir)) {
+            target_step_pos = dest_step_pos;
+            target_lens_pos = a_ctrl->step_position_table[target_step_pos];
+            a_ctrl->func_tbl->actuator_write_focus(a_ctrl,
+                                                   curr_lens_pos,
+                                                   &manual_focus_damping_params,
+                                                   sign_dir,
+                                                   target_lens_pos);
+            curr_lens_pos = target_lens_pos;
+        } else {
+            target_step_pos = step_boundary;
+            target_lens_pos = a_ctrl->step_position_table[target_step_pos];
+            a_ctrl->func_tbl->actuator_write_focus(a_ctrl,
+                                                   curr_lens_pos,
+                                                   &manual_focus_damping_params,
+                                                   sign_dir,
+                                                   target_lens_pos);
+            curr_lens_pos = target_lens_pos;
+            a_ctrl->curr_region_index += sign_dir;
+        }
+        a_ctrl->curr_step_pos = target_step_pos;
+    }
+
+    move_params->curr_lens_pos = curr_lens_pos;
+    reg_setting.reg_setting = a_ctrl->i2c_reg_tbl;
+    reg_setting.data_type = a_ctrl->i2c_data_type;
+    reg_setting.size = a_ctrl->i2c_tbl_index;
+    rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write_table_w_microdelay(
+        &a_ctrl->i2c_client, &reg_setting);
+    if (rc < 0) {
+        pr_err("manual_focus_move_focus: i2c write error: %d\n", rc);
+        return rc;
+    }
+    a_ctrl->i2c_tbl_index = 0;
+
+    return rc;
+}
+
+static ssize_t focus_control_show(struct device *dev,
+                                         struct device_attribute *attr, char *buf)
+{
+    if (!g_actuator_ctrl)
+        return sprintf(buf, "0\n");
+
+    return sprintf(buf, "%u\n", g_actuator_ctrl->curr_step_pos);
+}
+
+
+static ssize_t focus_control_store(struct device *dev,
+                                     struct device_attribute *attr,
+                                     const char *buf, size_t count)
+{
+    unsigned int val;
+    int ret;
+    struct msm_actuator_move_params_t move_params;
+    struct msm_actuator_ctrl_t *a_ctrl = g_actuator_ctrl;
+
+    if (!a_ctrl)
+        return -EFAULT;
+
+    if (a_ctrl->actuator_state != ACT_OPS_ACTIVE) {
+        pr_warn("Actuator not in ACTIVE state, focus_control inactive\n");
+        return count;
+    }
+
+    if (!g_actuator_ctrl->manual_focus) {
+        pr_warn("Manual focus disabled, focus_control inactive\n");
+        return count;
+    }
+
+    ret = kstrtouint(buf, 0, &val);
+    if (ret < 0)
+        return ret;
+
+    if (val > g_actuator_ctrl->total_steps) {
+        pr_err("focus_control: value out of range (0-%u)\n",
+               g_actuator_ctrl->total_steps);
+        return -EINVAL;
+    }
+
+    memset(&move_params, 0, sizeof(move_params));
+    move_params.dest_step_pos = val;
+
+    move_params.num_steps = abs(val - g_actuator_ctrl->curr_step_pos);
+    if (val > g_actuator_ctrl->curr_step_pos) {
+        move_params.dir = MOVE_FAR;
+        move_params.sign_dir = MSM_ACTUATOR_MOVE_SIGNED_FAR;
+    } else {
+        move_params.dir = MOVE_NEAR;
+        move_params.sign_dir = MSM_ACTUATOR_MOVE_SIGNED_NEAR;
+    }
+
+    ret = manual_focus_move_focus(g_actuator_ctrl, &move_params);
+
+    if (ret < 0) {
+        pr_err("focus_control: manual_focus_move_focus failed: %d\n", ret);
+        return ret;
+    }
+
+    g_actuator_ctrl->curr_step_pos = val;
+    return count;
+}
+
+static ssize_t manual_focus_show(struct device *dev,
+                                         struct device_attribute *attr, char *buf)
+{
+    if (!g_actuator_ctrl)
+        return sprintf(buf, "0\n");
+
+    return sprintf(buf, "%u\n", g_actuator_ctrl->manual_focus);
+}
+
+static ssize_t manual_focus_store(struct device *dev,
+                                          struct device_attribute *attr, const char *buf, size_t count)
+{
+    unsigned int val;
+    int ret;
+
+    if (!g_actuator_ctrl)
+        return -EFAULT;
+
+    ret = kstrtouint(buf, 0, &val);
+    if (ret < 0)
+        return ret;
+
+    if (val != 0 && val != 1)
+        return -EINVAL;
+
+    g_actuator_ctrl->manual_focus = val;
+    return count;
+}
+
+static DEVICE_ATTR_RW(manual_focus);
+static DEVICE_ATTR_RW(focus_control);
 
 static int32_t msm_actuator_bivcm_move_focus(
 	struct msm_actuator_ctrl_t *a_ctrl,
@@ -2018,6 +2194,10 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 
 	msm_actuator_t = kzalloc(sizeof(struct msm_actuator_ctrl_t),
 		GFP_KERNEL);
+	g_actuator_ctrl = msm_actuator_t;
+
+    msm_actuator_t->manual_focus = 0;
+
 	if (!msm_actuator_t) {
 		pr_err("%s:%d failed no memory\n", __func__, __LINE__);
 		return -ENOMEM;
@@ -2110,6 +2290,13 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 		&msm_actuator_v4l2_subdev_fops;
 
 	CDBG("Exit\n");
+
+	int ret;
+	ret = device_create_file(&pdev->dev, &dev_attr_manual_focus);
+	ret = device_create_file(&pdev->dev, &dev_attr_focus_control);
+	if (ret)
+		pr_err("device_create_file failed: %d\n", ret);
+
 	return rc;
 }
 
