@@ -2807,29 +2807,7 @@ CONFIG_MSM_SDE_ROTATOR=y
 #
 # Supported MMC/SDIO adapters
 #
-CONFIG_RADIO_ADAPTERS=y
-# CONFIG_RADIO_SI470X is not set
-# CONFIG_RADIO_SI4713 is not set
-# CONFIG_USB_MR800 is not set
-# CONFIG_USB_DSBR is not set
-# CONFIG_RADIO_MAXIRADIO is not set
-# CONFIG_RADIO_SHARK is not set
-# CONFIG_RADIO_SHARK2 is not set
-# CONFIG_USB_KEENE is not set
-# CONFIG_USB_RAREMONO is not set
-# CONFIG_USB_MA901 is not set
-# CONFIG_RADIO_TEA5764 is not set
-# CONFIG_RADIO_SAA7706H is not set
-# CONFIG_RADIO_TEF6862 is not set
-# CONFIG_RADIO_WL1273 is not set
-
-#
-# Texas Instruments WL128x FM driver (ST based)
-#
-# CONFIG_RADIO_WL128X is not set
-CONFIG_RADIO_IRIS=y
-CONFIG_RADIO_IRIS_TRANSPORT=y
-CONFIG_RADIO_SILABS=y
+# CONFIG_RADIO_ADAPTERS is not set
 # CONFIG_CYPRESS_FIRMWARE is not set
 
 #
