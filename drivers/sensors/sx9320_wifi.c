@@ -13,6 +13,7 @@
 #include <linux/fs.h>
 #include <linux/uaccess.h>
 #include <linux/wakelock.h>
+#include <linux/pm.h>
 #include <linux/interrupt.h>
 #include <linux/regulator/consumer.h>
 #include <linux/sensor/sensors_core.h>
@@ -306,6 +307,7 @@ static void sx9320_wifi_send_event(struct sx9320_p *data, u8 state)
 	} else {
 		data->state = IDLE;
 		pr_info("[SX9320]: %s - button released\n", __func__);
+		pm_wakeup_event(data->client->dev.parent, 3000);
 	}
 
 	if (data->skip_data == true) {
