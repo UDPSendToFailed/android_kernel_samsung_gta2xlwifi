@@ -1730,9 +1730,9 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 					input_report_abs(info->input_dev, ABS_MT_POSITION_X, info->finger[TouchID].x);
 					input_report_abs(info->input_dev, ABS_MT_POSITION_Y, info->finger[TouchID].y);
 					input_report_abs(info->input_dev, ABS_MT_TOUCH_MAJOR,
-								info->finger[TouchID].major);
+								info->finger[TouchID].major * 7);
 					input_report_abs(info->input_dev, ABS_MT_TOUCH_MINOR,
-								info->finger[TouchID].minor);
+								info->finger[TouchID].minor * 7);
 
 					if (info->brush_mode)
 						input_report_abs(info->input_dev, ABS_MT_CUSTOM,
@@ -1745,7 +1745,7 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 
 					if (info->board->support_mt_pressure)
 						input_report_abs(info->input_dev, ABS_MT_PRESSURE,
-									info->finger[TouchID].z);
+									info->finger[TouchID].z * 158);
 
 					if ((info->touch_count > 4) && (info->check_multi == 0)) {
 						info->check_multi = 1;
@@ -1790,9 +1790,9 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 					input_report_abs(info->input_dev, ABS_MT_POSITION_X, info->finger[TouchID].x);
 					input_report_abs(info->input_dev, ABS_MT_POSITION_Y, info->finger[TouchID].y);
 					input_report_abs(info->input_dev, ABS_MT_TOUCH_MAJOR,
-								info->finger[TouchID].major);
+								info->finger[TouchID].major * 7);
 					input_report_abs(info->input_dev, ABS_MT_TOUCH_MINOR,
-								info->finger[TouchID].minor);
+								info->finger[TouchID].minor * 7);
 
 					if (info->brush_mode)
 						input_report_abs(info->input_dev, ABS_MT_CUSTOM,
@@ -1805,7 +1805,7 @@ static u8 fts_event_handler_type_b(struct fts_ts_info *info)
 
 					if (info->board->support_mt_pressure)
 						input_report_abs(info->input_dev, ABS_MT_PRESSURE,
-									info->finger[TouchID].z);
+									info->finger[TouchID].z * 158);
 
 					info->finger[TouchID].mcount++;
 				} else {
@@ -2256,9 +2256,7 @@ static int fts_parse_dt(struct i2c_client *client)
 
 	pdata->support_hover = false;
 	pdata->support_glove = false;
-#ifdef CONFIG_SEC_FACTORY
 	pdata->support_mt_pressure = true;
-#endif
 #ifdef FTS_SUPPORT_TA_MODE
 	pdata->register_cb = fts_tsp_register_callback;
 #endif
