@@ -3612,27 +3612,6 @@ CONFIG_ALLOC_BUFFERS_IN_4K_CHUNKS=y
 # CONFIG_LUSTRE_FS is not set
 # CONFIG_DGAP is not set
 # CONFIG_GS_FPGABOOT is not set
-# CONFIG_SEC_STI is not set
-
-#
-# Samsung ABC Options
-#
-
-#
-# Samsung ABC Hub Options
-#
-
-#
-# Samsung ABC Hub Connect Detect Options
-#
-
-#
-# Samsung ABC Hub Booting Time Check Options
-#
-
-#
-# Samsung ABC Hub Booting Time Check eng mode Options
-#
 
 #
 # Qualcomm Atheros Prima WLAN module
