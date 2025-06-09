@@ -143,7 +143,7 @@ int wlan_hdd_ftm_start(hdd_context_t *pAdapter);
 #define MAX_WAIT_FOR_ROC_COMPLETION 3
 /* the Android framework expects this param even though we don't use it */
 #define BUF_LEN 20
-static char fwpath_buffer[BUF_LEN];
+static char fwpath_buffer[BUF_LEN] = "sta";
 static struct kparam_string fwpath = {
    .string = fwpath_buffer,
    .maxlen = BUF_LEN,
@@ -155,6 +155,8 @@ static int   enable_dfs_chan_scan = -1;
 
 #ifndef MODULE
 static int wlan_hdd_inited;
+static void kickstart_work_handler(struct work_struct *work);
+static DECLARE_DELAYED_WORK(kickstart_work, kickstart_work_handler);
 #endif
 
 /*
@@ -14575,9 +14577,6 @@ static int hdd_driver_init( void)
 #ifdef HAVE_WCNSS_CAL_DOWNLOAD
    int max_retries = 0;
 #endif
-#ifdef HAVE_CBC_DONE
-   int max_cbc_retries = 0;
-#endif
 
 #ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
    wlan_logging_sock_init_svc();
@@ -14612,15 +14611,6 @@ static int hdd_driver_init( void)
 #endif
 
       return -ENODEV;
-   }
-#endif
-
-#ifdef HAVE_CBC_DONE
-   while (!wcnss_cbc_complete() && 10 >= ++max_cbc_retries) {
-       msleep(1000);
-   }
-   if (max_cbc_retries >= 10) {
-      hddLog(VOS_TRACE_LEVEL_FATAL, "%s:CBC not completed", __func__);
    }
 #endif
 
@@ -14872,19 +14862,16 @@ static int con_mode_handler(const char *kmessage,
    return param_set_int(kmessage, kp);
 }
 #else /* #ifdef MODULE */
-/**---------------------------------------------------------------------------
 
-  \brief kickstart_driver
-
-   This is the driver entry point
-   - delayed driver initialization when driver is statically linked
-   - invoked when module parameter fwpath is modified from userspace to signal
-     initializing the WLAN driver or when con_mode is modified from userspace
-     to signal a switch in operating mode
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
+/**
+ * kickstart_driver() - Performs the actual driver unload/load sequence.
+ *
+ * This function handles both the initial driver load and subsequent runtime
+ * mode switches by calling hdd_driver_exit() followed by hdd_driver_init().
+ * It is invoked by the kickstart_work_handler once all prerequisites are met.
+ *
+ * Return: 0 for success, non-zero for failure
+ */
 static int kickstart_driver(void)
 {
    int ret_status;
@@ -14896,55 +14883,75 @@ static int kickstart_driver(void)
    }
 
    hdd_driver_exit();
-
    msleep(200);
-
    ret_status = hdd_driver_init();
    wlan_hdd_inited = ret_status ? 0 : 1;
    return ret_status;
 }
 
-/**---------------------------------------------------------------------------
+/**
+ * kickstart_work_handler() - Patient, non-blocking work handler for init.
+ *
+ * This function is executed by a kernel worker thread. It patiently waits for
+ * the underlying hardware subsystem (WCNSS) to be ready by checking
+ * wcnss_cbc_complete(). If the subsystem is not ready, it reschedules itself
+ * to try again, allowing the rest of the system to boot without blocking.
+ */
+static void kickstart_work_handler(struct work_struct *work)
+{
+#ifdef HAVE_CBC_DONE
+   /* Check if the Wireless Connectivity Sub-System is ready */
+   if (!wcnss_cbc_complete()) {
+      pr_info("%s: WCNSS CBC not complete, deferring kickstart...\n", WLAN_MODULE_NAME);
+      /* Reschedule the work to try again in 1 second */
+      schedule_delayed_work(to_delayed_work(work), msecs_to_jiffies(1000));
+      return;
+   }
+#endif
 
-  \brief fwpath_changed_handler() - Handler Function
+   pr_info("%s: WCNSS is ready, proceeding with driver kickstart.\n", WLAN_MODULE_NAME);
+   kickstart_driver();
+}
 
-   Handle changes to the fwpath parameter
-
-  \return - 0 for success, non zero for failure
-
-  --------------------------------------------------------------------------*/
+/**
+ * fwpath_changed_handler() - Non-blocking handler for fwpath parameter.
+ *
+ * For built-in drivers, this is the primary userspace trigger to initialize
+ * the driver. It defers the actual initialization to a workqueue to avoid
+ * blocking the boot process.
+ */
 static int fwpath_changed_handler(const char *kmessage,
                                   const struct kernel_param *kp)
 {
    int ret;
 
+   if (wlan_hdd_inited && (strcmp(kmessage, fwpath.string) == 0)) {
+       pr_info("%s: fwpath already set to '%s', ignoring.\n", WLAN_MODULE_NAME, kmessage);
+       return 0;
+   }
+
    ret = param_set_copystring(kmessage, kp);
-   if (0 == ret)
-      ret = kickstart_driver();
+   if (0 == ret) {
+      /* This is non-blocking. It just puts the work on a queue. */
+      schedule_delayed_work(&kickstart_work, 0);
+   }
    return ret;
 }
 
-/**---------------------------------------------------------------------------
-
-  \brief con_mode_handler() -
-
-  Handler function for module param con_mode when it is changed by userspace
-  Dynamically linked - do nothing
-  Statically linked - exit and init driver, as in rmmod and insmod
-
-  \param  -
-
-  \return -
-
-  --------------------------------------------------------------------------*/
+/**
+ * con_mode_handler() - Non-blocking handler for con_mode parameter.
+ *
+ * Also triggers the non-blocking initialization via the workqueue.
+ */
 static int con_mode_handler(const char *kmessage,
                             const struct kernel_param *kp)
 {
    int ret;
 
    ret = param_set_int(kmessage, kp);
-   if (0 == ret)
-      ret = kickstart_driver();
+   if (0 == ret) {
+      schedule_delayed_work(&kickstart_work, 0);
+   }
    return ret;
 }
 #endif /* #ifdef MODULE */
