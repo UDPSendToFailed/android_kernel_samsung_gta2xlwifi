@@ -407,13 +407,6 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 # GCC 15 flags tuned for SD450's Cortex-A53 (32KB L1I, 2-wide in-order)
 KBUILD_CFLAGS += -march=armv8-a+crc -mtune=cortex-a53
 
-# In-order scheduling is critical: compiler order = execution order on A53
-# Cherry-pick -O3 passes that improve codegen without inflating code size
-KBUILD_CFLAGS += -falign-functions=16 -falign-loops=8 \
-				 -fschedule-insns -fschedule-insns2 -fipa-pta \
-				 -fmodulo-sched -fmodulo-sched-allow-regmoves \
-				 -fpredictive-commoning -ftree-partial-pre
-
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
 KBUILD_AFLAGS   := -D__ASSEMBLY__
