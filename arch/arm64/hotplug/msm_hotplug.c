@@ -29,7 +29,7 @@
 #include <linux/tick.h>
 
 #define MSM_HOTPLUG			"msm_hotplug"
-#define HOTPLUG_ENABLED			1
+#define HOTPLUG_ENABLED			0
 #define DEFAULT_UPDATE_RATE		100
 #define START_DELAY			20000
 #define MIN_INPUT_INTERVAL		150 * 1000L
@@ -39,7 +39,7 @@
 #define DEFAULT_NR_CPUS_BOOSTED		NR_CPUS / 2
 #define DEFAULT_MIN_CPUS_ONLINE		1
 #define DEFAULT_MAX_CPUS_ONLINE		NR_CPUS
-#define DEFAULT_FAST_LANE_LOAD		100
+#define DEFAULT_FAST_LANE_LOAD		300
 #define DEFAULT_MAX_CPUS_ONLINE_SUSP	2
 
 static unsigned int debug = 0;
