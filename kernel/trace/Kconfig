@@ -109,6 +109,7 @@ config MSM_RTB_SEPARATE_CPUS
 config IPC_LOGGING
 	bool "Debug Logging for IPC Drivers"
 	select GENERIC_TRACER
+	select TRACING
 	help
 	  This option allows the debug logging for IPC Drivers.
 
