@@ -69,7 +69,7 @@
 		interrupts = <0 95 0>;
 
 		qcom,master-id = <86>;
-		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-out = <1000000>;
 		qcom,clk-freq-in  = <19200000>;
 		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
