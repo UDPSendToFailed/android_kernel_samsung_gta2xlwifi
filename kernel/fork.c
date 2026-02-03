@@ -343,6 +343,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig)
 	if (err)
 		goto free_ti;
 
+	tsk->time_in_state = NULL;
 	tsk->flags &= ~PF_SU;
 
 	tsk->stack = ti;
