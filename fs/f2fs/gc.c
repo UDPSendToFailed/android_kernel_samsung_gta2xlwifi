@@ -62,6 +62,18 @@ static int gc_thread_func(void *data)
 				gc_th->gc_wake,
 				msecs_to_jiffies(wait_ms));
 
+		/*
+		 * Must check freezing before acquiring the wakelock.
+		 * Otherwise TRIGGER_SOFF grabs the wakelock while
+		 * the freezer is active, and suspend aborts every time.
+		 */
+		if (freezing(current)) {
+			gc_set_wakelock(sbi, gc_th, false);
+			try_to_freeze();
+			stat_other_skip_bggc_count(sbi);
+			continue;
+		}
+
 		force_gc = TRIGGER_SOFF;
 		if (force_gc) {
 			gc_set_wakelock(sbi, gc_th, true);
@@ -76,11 +88,6 @@ static int gc_thread_func(void *data)
 		/* give it a try one time */
 		if (gc_th->gc_wake)
 			gc_th->gc_wake = 0;
-
-		if (try_to_freeze()) {
-			stat_other_skip_bggc_count(sbi);
-			continue;
-		}
 		if (kthread_should_stop())
 			break;
 
