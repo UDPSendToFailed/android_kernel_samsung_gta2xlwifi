@@ -27,6 +27,7 @@
 struct f2fs_gc_kthread {
 	struct task_struct *f2fs_gc_task;
 	wait_queue_head_t gc_wait_queue_head;
+	char gc_wakelock_name[25];
 	struct wake_lock gc_wakelock;
 
 	/* for gc sleep time */
