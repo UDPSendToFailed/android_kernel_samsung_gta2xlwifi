@@ -1681,7 +1681,6 @@ int file_update_time(struct file *file)
 	struct inode *inode = file_inode(file);
 	struct timespec now;
 	int sync_it = 0;
-	int need_sync = 0;
 	int ret;
 
 	/* First try to exhaust all avenues to not sync */
@@ -1694,6 +1693,8 @@ int file_update_time(struct file *file)
 
 	if (!timespec_equal(&inode->i_ctime, &now))
 		sync_it |= S_CTIME;
+
+	if (IS_I_VERSION(inode))
 		sync_it |= S_VERSION;
 
 	if (!sync_it)
