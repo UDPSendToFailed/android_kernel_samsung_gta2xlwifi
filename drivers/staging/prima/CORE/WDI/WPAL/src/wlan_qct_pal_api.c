@@ -393,7 +393,7 @@ wpt_status wpalRivaSubystemRestart(void)
     Return:
        NONE
 ---------------------------------------------------------------------------*/
-void wpalWlanReload(enum vos_hang_reason reason)
+void wpalWlanReload(wpt_uint32 reason)
 {
    vos_wlanRestart(reason);
    return;

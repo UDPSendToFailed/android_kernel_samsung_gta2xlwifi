@@ -1245,7 +1245,8 @@ int q6asm_set_sound_alive(struct audio_client *ac, long *param)
 	uint32_t sz = 0;
 	int rc  = 0;
 	int i = 0;
-	struct asm_stream_cmd_set_pp_params_sa cmd;
+	struct asm_stream_cmd_set_pp_params_sa cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if (ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1253,7 +1254,8 @@ int q6asm_set_sound_alive(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_sa);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;
@@ -1319,7 +1321,8 @@ int q6asm_set_play_speed(struct audio_client *ac, long *param)
 {
 	uint32_t sz = 0;
 	int rc  = 0;
-	struct asm_stream_cmd_set_pp_params_vsp cmd;
+	struct asm_stream_cmd_set_pp_params_vsp cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if (ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1327,7 +1330,8 @@ int q6asm_set_play_speed(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_vsp);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;
@@ -1362,7 +1366,8 @@ int q6asm_set_adaptation_sound(struct audio_client *ac, long *param)
 	uint32_t sz = 0;
 	int rc  = 0;
 	int i = 0;
-	struct asm_stream_cmd_set_pp_params_adaptation_sound cmd;
+	struct asm_stream_cmd_set_pp_params_adaptation_sound cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if (ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1370,7 +1375,8 @@ int q6asm_set_adaptation_sound(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_adaptation_sound);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;
@@ -1412,7 +1418,8 @@ int q6asm_set_sound_balance(struct audio_client *ac, long *param)
 {
 	uint32_t sz = 0;
 	int rc  = 0;
-	struct asm_stream_cmd_set_pp_params_lrsm cmd;
+	struct asm_stream_cmd_set_pp_params_lrsm cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if (ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1420,7 +1427,8 @@ int q6asm_set_sound_balance(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_lrsm);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;
@@ -1455,7 +1463,8 @@ int q6asm_set_myspace(struct audio_client *ac, long *param)
 {
 	uint32_t sz = 0;
 	int rc  = 0;
-	struct asm_stream_cmd_set_pp_params_msp cmd;
+	struct asm_stream_cmd_set_pp_params_msp cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if (ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1463,7 +1472,8 @@ int q6asm_set_myspace(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_msp);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;
@@ -1497,7 +1507,8 @@ int q6asm_set_sound_boost(struct audio_client *ac, long *param)
 {
 	uint32_t sz = 0;
 	int rc  = 0;
-	struct asm_stream_cmd_set_pp_params_sb cmd;
+	struct asm_stream_cmd_set_pp_params_sb cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if (ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1505,7 +1516,8 @@ int q6asm_set_sound_boost(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_sb);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;
@@ -1539,7 +1551,8 @@ int q6asm_set_upscaler(struct audio_client *ac, long *param)
 {
 	uint32_t sz = 0;
 	int rc  = 0;
-	struct asm_stream_cmd_set_pp_params_upscaler cmd;
+	struct asm_stream_cmd_set_pp_params_upscaler cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if (ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1547,7 +1560,8 @@ int q6asm_set_upscaler(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_upscaler);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;
@@ -1581,7 +1595,8 @@ int q6asm_set_sb_rotation(struct audio_client *ac, long *param)
 {
 	int sz = 0;
 	int rc = 0;
-	struct asm_stream_cmd_set_pp_params_sb_rotation cmd;
+	struct asm_stream_cmd_set_pp_params_sb_rotation cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if(ac == NULL) {
 		pr_err("%s: audio client is null\n", __func__);
@@ -1589,7 +1604,8 @@ int q6asm_set_sb_rotation(struct audio_client *ac, long *param)
 	}
 
 	sz = sizeof(struct asm_stream_cmd_set_pp_params_sb_rotation);
-	q6asm_add_hdr_async_in_adaptation(ac, &cmd.hdr, sz, TRUE);
+	q6asm_add_hdr_async_in_adaptation(ac, &local_hdr, sz, TRUE);
+	cmd.hdr = local_hdr;
 
 	cmd.hdr.opcode = ASM_STREAM_CMD_SET_PP_PARAMS_V2;
 	cmd.param.data_payload_addr_lsw = 0;

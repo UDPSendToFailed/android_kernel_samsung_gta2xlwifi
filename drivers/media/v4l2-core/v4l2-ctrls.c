@@ -3028,6 +3028,9 @@ static int validate_ctrls(struct v4l2_ext_controls *cs,
 	for (i = 0; i < cs->count; i++) {
 		struct v4l2_ctrl *ctrl = helpers[i].ctrl;
 		union v4l2_ctrl_ptr p_new;
+		/* Use local variables to avoid taking address of packed members */
+		s64 val64;
+		s32 val32;
 
 		cs->error_idx = i;
 
@@ -3047,10 +3050,14 @@ static int validate_ctrls(struct v4l2_ext_controls *cs,
 		 */
 		if (ctrl->is_ptr)
 			continue;
-		if (ctrl->type == V4L2_CTRL_TYPE_INTEGER64)
-			p_new.p_s64 = &cs->controls[i].value64;
-		else
-			p_new.p_s32 = &cs->controls[i].value;
+
+		if (ctrl->type == V4L2_CTRL_TYPE_INTEGER64) {
+			val64 = cs->controls[i].value64;
+			p_new.p_s64 = &val64;
+		} else {
+			val32 = cs->controls[i].value;
+			p_new.p_s32 = &val32;
+		}
 		ret = validate_new(ctrl, p_new);
 		if (ret)
 			return ret;

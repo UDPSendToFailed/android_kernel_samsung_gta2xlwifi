@@ -548,15 +548,7 @@ static inline void __attribute((deprecated)) deprecate_rcu_lockdep_assert(void)
  * @c: condition to check
  * @s: informative message
  */
-#define rcu_lockdep_assert(c, s)					\
-	do {								\
-		static bool __section(.data.unlikely) __warned;		\
-		deprecate_rcu_lockdep_assert();				\
-		if (debug_lockdep_rcu_enabled() && !__warned && !(c)) {	\
-			__warned = true;				\
-			lockdep_rcu_suspicious(__FILE__, __LINE__, s);	\
-		}							\
-	} while (0)
+#define rcu_lockdep_assert(c, s) RCU_LOCKDEP_WARN(!(c), s)
 
 /**
  * RCU_LOCKDEP_WARN - emit lockdep splat if specified condition is met
@@ -595,7 +587,7 @@ static inline void rcu_preempt_sleep_check(void)
 
 #else /* #ifdef CONFIG_PROVE_RCU */
 
-#define rcu_lockdep_assert(c, s) deprecate_rcu_lockdep_assert()
+#define rcu_lockdep_assert(c, s) do { } while (0)
 #define RCU_LOCKDEP_WARN(c, s) do { } while (0)
 #define rcu_sleep_check() do { } while (0)
 
@@ -647,7 +639,7 @@ static inline void rcu_preempt_sleep_check(void)
 #define __rcu_dereference_index_check(p, c) \
 ({ \
 	typeof(p) _________p1 = ACCESS_ONCE(p); \
-	rcu_lockdep_assert(c, \
+	RCU_LOCKDEP_WARN(!(c), \
 			   "suspicious rcu_dereference_index_check() usage"); \
 	smp_read_barrier_depends(); /* Dependency order vs. p above. */ \
 	(_________p1); \

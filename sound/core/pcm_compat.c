@@ -204,28 +204,33 @@ static int snd_pcm_status_user_compat(struct snd_pcm_substream *substream,
 				      struct snd_pcm_status32 __user *src)
 {
 	struct snd_pcm_status status;
+	struct snd_pcm_status32 s32;
 	int err;
 
 	err = snd_pcm_status(substream, &status);
 	if (err < 0)
 		return err;
 
-	if (clear_user(src, sizeof(*src)))
-		return -EFAULT;
-	if (put_user(status.state, &src->state) ||
-	    compat_put_timespec(&status.trigger_tstamp, &src->trigger_tstamp) ||
-	    compat_put_timespec(&status.tstamp, &src->tstamp) ||
-	    put_user(status.appl_ptr, &src->appl_ptr) ||
-	    put_user(status.hw_ptr, &src->hw_ptr) ||
-	    put_user(status.delay, &src->delay) ||
-	    put_user(status.avail, &src->avail) ||
-	    put_user(status.avail_max, &src->avail_max) ||
-	    put_user(status.overrange, &src->overrange) ||
-	    put_user(status.suspended_state, &src->suspended_state) ||
-	    compat_put_timespec(&status.audio_tstamp, &src->audio_tstamp))
+	memset(&s32, 0, sizeof(s32));
+	s32.state = status.state;
+	s32.trigger_tstamp.tv_sec = status.trigger_tstamp.tv_sec;
+	s32.trigger_tstamp.tv_nsec = status.trigger_tstamp.tv_nsec;
+	s32.tstamp.tv_sec = status.tstamp.tv_sec;
+	s32.tstamp.tv_nsec = status.tstamp.tv_nsec;
+	s32.appl_ptr = status.appl_ptr;
+	s32.hw_ptr = status.hw_ptr;
+	s32.delay = status.delay;
+	s32.avail = status.avail;
+	s32.avail_max = status.avail_max;
+	s32.overrange = status.overrange;
+	s32.suspended_state = status.suspended_state;
+	s32.audio_tstamp.tv_sec = status.audio_tstamp.tv_sec;
+	s32.audio_tstamp.tv_nsec = status.audio_tstamp.tv_nsec;
+
+	if (copy_to_user(src, &s32, sizeof(s32)))
 		return -EFAULT;
 
-	return err;
+	return 0;
 }
 
 /* both for HW_PARAMS and HW_REFINE */
@@ -403,15 +408,19 @@ static int snd_pcm_ioctl_sync_ptr_compat(struct snd_pcm_substream *substream,
 	struct snd_pcm_mmap_control scontrol;
 	struct snd_pcm_mmap_status sstatus;
 	snd_pcm_uframes_t boundary;
+	struct snd_pcm_sync_ptr32 s32;
 	int err;
 
 	if (snd_BUG_ON(!runtime))
 		return -EINVAL;
 
-	if (get_user(sflags, &src->flags) ||
-	    get_user(scontrol.appl_ptr, &src->c.control.appl_ptr) ||
-	    get_user(scontrol.avail_min, &src->c.control.avail_min))
+	if (copy_from_user(&s32, src, sizeof(s32)))
 		return -EFAULT;
+
+	sflags = s32.flags;
+	scontrol.appl_ptr = s32.c.control.appl_ptr;
+	scontrol.avail_min = s32.c.control.avail_min;
+
 	if (sflags & SNDRV_PCM_SYNC_PTR_HWSYNC) {
 		err = snd_pcm_hwsync(substream);
 		if (err < 0)
@@ -438,14 +447,18 @@ static int snd_pcm_ioctl_sync_ptr_compat(struct snd_pcm_substream *substream,
 	sstatus.suspended_state = status->suspended_state;
 	sstatus.audio_tstamp = status->audio_tstamp;
 	snd_pcm_stream_unlock_irq(substream);
-	if (put_user(sstatus.state, &src->s.status.state) ||
-	    put_user(sstatus.hw_ptr, &src->s.status.hw_ptr) ||
-	    compat_put_timespec(&sstatus.tstamp, &src->s.status.tstamp) ||
-	    put_user(sstatus.suspended_state, &src->s.status.suspended_state) ||
-	    compat_put_timespec(&sstatus.audio_tstamp,
-		    &src->s.status.audio_tstamp) ||
-	    put_user(scontrol.appl_ptr, &src->c.control.appl_ptr) ||
-	    put_user(scontrol.avail_min, &src->c.control.avail_min))
+
+	s32.s.status.state = sstatus.state;
+	s32.s.status.hw_ptr = sstatus.hw_ptr;
+	s32.s.status.tstamp.tv_sec = sstatus.tstamp.tv_sec;
+	s32.s.status.tstamp.tv_nsec = sstatus.tstamp.tv_nsec;
+	s32.s.status.suspended_state = sstatus.suspended_state;
+	s32.s.status.audio_tstamp.tv_sec = sstatus.audio_tstamp.tv_sec;
+	s32.s.status.audio_tstamp.tv_nsec = sstatus.audio_tstamp.tv_nsec;
+	s32.c.control.appl_ptr = scontrol.appl_ptr;
+	s32.c.control.avail_min = scontrol.avail_min;
+
+	if (copy_to_user(src, &s32, sizeof(s32)))
 		return -EFAULT;
 
 	return 0;

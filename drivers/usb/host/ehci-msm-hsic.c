@@ -1053,7 +1053,7 @@ static void ehci_hsic_bus_vote_w(struct work_struct *w)
 static int msm_hsic_reset_done(struct usb_hcd *hcd)
 {
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	u32 __iomem *status_reg = &ehci->regs->port_status[0];
+	u32 __iomem *status_reg = (u32 __iomem *)ehci->regs->port_status + 0;
 	int ret;
 
 	ehci_writel(ehci, ehci_readl(ehci, status_reg) & ~(PORT_RWC_BITS |
@@ -1189,7 +1189,7 @@ static void ehci_hsic_reset_sof_bug_handler(struct usb_hcd *hcd, u32 val)
 	struct ehci_hcd	*ehci = hcd_to_ehci(hcd);
 	struct msm_hsic_hcd *mehci = hcd_to_hsic(hcd);
 	struct msm_hsic_host_platform_data *pdata = mehci->dev->platform_data;
-	u32 __iomem *status_reg = &ehci->regs->port_status[0];
+	u32 __iomem *status_reg = (u32 __iomem *)ehci->regs->port_status + 0;
 	u32 cmd;
 	unsigned long flags;
 	int retries = 0, ret, cnt = RESET_SIGNAL_TIME_USEC;
@@ -1361,14 +1361,14 @@ resume_again:
 	}
 
 
-	temp = ehci_readl(ehci, &ehci->regs->port_status[0]);
+	temp = ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + 0);
 	temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 	if (test_bit(0, &ehci->bus_suspended) && (temp & PORT_SUSPEND)) {
 		temp |= PORT_RESUME;
 		set_bit(0, &resume_needed);
 	}
 	dbg_log_event(NULL, "FPR: Set", temp);
-	ehci_writel(ehci, temp, &ehci->regs->port_status[0]);
+	ehci_writel(ehci, temp, (u32 __iomem *)ehci->regs->port_status + 0);
 
 	/* HSIC controller has a h/w bug due to which it can try to send SOFs
 	 * (start of frames) during port resume resulting in phy lockup. HSIC hw
@@ -1402,7 +1402,7 @@ resume_again:
 		} else {
 			dbg_log_event(NULL, "FPR: Tightloop", 0);
 			/* do the resume in a tight loop */
-			ehci_handshake(ehci, &ehci->regs->port_status[0],
+			ehci_handshake(ehci, (u32 __iomem *)ehci->regs->port_status + 0,
 				PORT_RESUME, 0, 22 * 1000);
 			ehci_writel(ehci, ehci_readl(ehci,
 				&ehci->regs->command) | CMD_RUN,
@@ -1415,17 +1415,17 @@ resume_again:
 			dbg_log_event(NULL, "FPR: Re-Resume", retry_cnt);
 			pr_info("FPR: retry count: %d\n", retry_cnt);
 			spin_unlock_irq(&ehci->lock);
-			temp = ehci_readl(ehci, &ehci->regs->port_status[0]);
+			temp = ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + 0);
 			temp &= ~PORT_RWC_BITS;
 			temp |= PORT_SUSPEND;
-			ehci_writel(ehci, temp, &ehci->regs->port_status[0]);
+			ehci_writel(ehci, temp, (u32 __iomem *)ehci->regs->port_status + 0);
 			/* Keep the bus idle for 5ms so that peripheral
 			 * can detect and initiate suspend
 			 */
 			usleep_range(5000, 5000);
 			dbg_log_event(NULL,
 				"FPR: RResume",
-				ehci_readl(ehci, &ehci->regs->port_status[0]));
+				ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + 0));
 			spin_lock_irq(&ehci->lock);
 			mehci->resume_again = 0;
 			retry_cnt++;

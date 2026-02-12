@@ -53,16 +53,13 @@ static void cmd_exit_work(struct work_struct *work)
 
 void sec_cmd_set_default_result(struct sec_cmd_data *data)
 {
-	char delim = ':';
 	memset(data->cmd_result, 0x00, SEC_CMD_RESULT_STR_LEN_EXPAND);
 	memcpy(data->cmd_result, data->cmd, SEC_CMD_STR_LEN);
-	strncat(data->cmd_result, &delim, 1);
+	strlcat(data->cmd_result, ":", SEC_CMD_RESULT_STR_LEN_EXPAND);
 }
 
 void sec_cmd_set_cmd_result_all(struct sec_cmd_data *data, char *buff, int len, char *item)
 {
-	char delim1 = ' ';
-	char delim2 = ':';
 	size_t cmd_result_len;
 
 	cmd_result_len = strlen(data->cmd_result_all) + len + 2 + strlen(item);
@@ -73,21 +70,21 @@ void sec_cmd_set_cmd_result_all(struct sec_cmd_data *data, char *buff, int len, 
 	}
 
 	data->item_count++;
-	strncat(data->cmd_result_all, &delim1, 1);
-	strncat(data->cmd_result_all, item, strlen(item));
-	strncat(data->cmd_result_all, &delim2, 1);
-	strncat(data->cmd_result_all, buff, len);
+	strlcat(data->cmd_result_all, " ", SEC_CMD_RESULT_STR_LEN);
+	strlcat(data->cmd_result_all, item, SEC_CMD_RESULT_STR_LEN);
+	strlcat(data->cmd_result_all, ":", SEC_CMD_RESULT_STR_LEN);
+	strlcat(data->cmd_result_all, buff, SEC_CMD_RESULT_STR_LEN);
 }
 
 void sec_cmd_set_cmd_result(struct sec_cmd_data *data, char *buff, int len)
 {
 	if (strlen(buff) >= (unsigned int)SEC_CMD_RESULT_STR_LEN_EXPAND) {
 		pr_err("%s %s: cmd length is over (%d)!!", SECLOG, __func__, (int)strlen(buff));
-		strncat(data->cmd_result, "NG", 2);
+		strlcat(data->cmd_result, "NG", SEC_CMD_RESULT_STR_LEN_EXPAND);
 		return;
 	}
 
-	strncat(data->cmd_result, buff, len);
+	strlcat(data->cmd_result, buff, SEC_CMD_RESULT_STR_LEN_EXPAND);
 }
 
 #ifndef USE_SEC_CMD_QUEUE

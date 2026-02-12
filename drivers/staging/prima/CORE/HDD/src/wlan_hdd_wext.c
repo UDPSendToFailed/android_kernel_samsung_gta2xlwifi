@@ -2557,7 +2557,7 @@ static int __iw_get_encode(struct net_device *dev,
 
     for(i=0; i < MAX_WEP_KEYS; i++)
     {
-        if(pRoamProfile->Keys.KeyMaterial[i] == NULL)
+        if(pRoamProfile->Keys.KeyLength[i] == 0)
         {
             continue;
         }
@@ -4478,7 +4478,7 @@ static int __iw_set_encode(struct net_device *dev,
 
           for(i=0;i < CSR_MAX_NUM_KEY; i++) {
 
-             if(pWextState->roamProfile.Keys.KeyMaterial[i])
+             if(pWextState->roamProfile.Keys.KeyLength[i])
                 pWextState->roamProfile.Keys.KeyLength[i] = 0;
           }
        }
@@ -4657,7 +4657,7 @@ static int __iw_get_encodeext(struct net_device *dev,
 
     for(i=0; i < MAX_WEP_KEYS; i++)
     {
-        if(pRoamProfile->Keys.KeyMaterial[i] == NULL)
+        if(pRoamProfile->Keys.KeyLength[i] == 0)
         {
             continue;
         }

@@ -2688,8 +2688,14 @@ typedef PACKED_PRE struct PACKED_POST
 
 typedef PACKED_PRE struct PACKED_POST
 {
-   tConfigStaParams configStaParams;
-   tConfigBssParams configBssParams;
+   PACKED_PRE union PACKED_POST {
+      tConfigStaParams configStaParams;
+      tConfigStaParams_V1 configStaParams_V1;
+   } uStaParams;
+   PACKED_PRE union PACKED_POST {
+      tConfigBssParams configBssParams;
+      tConfigBssParams_V1 configBssParams_V1;
+   } uBssParams;
 } tPostAssocReqParams, *tpPostAssocReqParams;
 
 typedef PACKED_PRE struct PACKED_POST

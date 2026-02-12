@@ -727,7 +727,7 @@ hdd_convert_hang_reason(enum vos_hang_reason reason)
  * Return: 0 on success or failure reason
  */
 int wlan_hdd_send_hang_reason_event(hdd_context_t *hdd_ctx,
-				    enum vos_hang_reason reason)
+				    unsigned int reason)
 {
 	struct sk_buff *vendor_event;
 	enum qca_wlan_vendor_hang_reason hang_reason;
@@ -11074,11 +11074,13 @@ int wlan_hdd_restore_channels(hdd_context_t *hdd_ctx)
 	if (status)
 		hddLog(VOS_TRACE_LEVEL_ERROR, "Can't Restore channel list");
     else
+    {
         /*
         * Free the cache channels when the
         * disabled channels are restored
         */
         wlan_hdd_free_cache_channels(hdd_ctx);
+    }
 	EXIT();
 
 	return 0;
@@ -14765,7 +14767,7 @@ static int wlan_hdd_cfg80211_update_bss( struct wiphy *wiphy,
          * ieee80211_mgmt(probe response) and passing to c
          * fg80211_inform_bss_frame.
          * */
-        if(is_p2p_scan && (pScanResult->ssId.ssId != NULL) &&
+        if(is_p2p_scan &&
                 !vos_mem_compare( pScanResult->ssId.ssId, "DIRECT-", 7) )
         {
             pScanResult = sme_ScanResultGetNext(hHal, pResult);
@@ -16900,7 +16902,7 @@ int wlan_hdd_cfg80211_set_ie( hdd_adapter_t *pAdapter,
 
                    /* IBSS mode doesn't contain params->proberesp_ies still
                     beaconIE's need to be populated in probe response frames */
-                   if ( (NULL != (genie - 2)) && (0 != eLen + 2) )
+                   if ( (0 != eLen + 2) )
                    {
                       u16 rem_probe_resp_ie_len = eLen + 2;
                       u8 probe_rsp_ie_len[3] = {0};

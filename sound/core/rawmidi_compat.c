@@ -34,14 +34,16 @@ static int snd_rawmidi_ioctl_params_compat(struct snd_rawmidi_file *rfile,
 					   struct snd_rawmidi_params32 __user *src)
 {
 	struct snd_rawmidi_params params;
-	unsigned int val;
+	struct snd_rawmidi_params32 params32;
 
-	if (get_user(params.stream, &src->stream) ||
-	    get_user(params.buffer_size, &src->buffer_size) ||
-	    get_user(params.avail_min, &src->avail_min) ||
-	    get_user(val, &src->no_active_sensing))
+	if (copy_from_user(&params32, src, sizeof(params32)))
 		return -EFAULT;
-	params.no_active_sensing = val;
+
+	params.stream = params32.stream;
+	params.buffer_size = params32.buffer_size;
+	params.avail_min = params32.avail_min;
+	params.no_active_sensing = params32.no_active_sensing;
+
 	switch (params.stream) {
 	case SNDRV_RAWMIDI_STREAM_OUTPUT:
 		if (!rfile->output)
@@ -68,9 +70,12 @@ static int snd_rawmidi_ioctl_status_compat(struct snd_rawmidi_file *rfile,
 {
 	int err;
 	struct snd_rawmidi_status status;
+	struct snd_rawmidi_status32 status32;
 
-	if (get_user(status.stream, &src->stream))
+	if (copy_from_user(&status32, src, sizeof(status32)))
 		return -EFAULT;
+	
+	status.stream = status32.stream;
 
 	switch (status.stream) {
 	case SNDRV_RAWMIDI_STREAM_OUTPUT:
@@ -89,10 +94,12 @@ static int snd_rawmidi_ioctl_status_compat(struct snd_rawmidi_file *rfile,
 	if (err < 0)
 		return err;
 
-	if (put_user(status.tstamp.tv_sec, &src->tstamp.tv_sec) ||
-	    put_user(status.tstamp.tv_nsec, &src->tstamp.tv_nsec) ||
-	    put_user(status.avail, &src->avail) ||
-	    put_user(status.xruns, &src->xruns))
+	status32.tstamp.tv_sec = status.tstamp.tv_sec;
+	status32.tstamp.tv_nsec = status.tstamp.tv_nsec;
+	status32.avail = status.avail;
+	status32.xruns = status.xruns;
+
+	if (copy_to_user(src, &status32, sizeof(status32)))
 		return -EFAULT;
 
 	return 0;
@@ -137,7 +144,8 @@ static int snd_rawmidi_ioctl_status_x32(struct snd_rawmidi_file *rfile,
 	if (err < 0)
 		return err;
 
-	if (put_timespec(&status.tstamp, &src->tstamp) ||
+	if (put_timespec(&status.tstamp, (void __user *)src +
+			 offsetof(struct snd_rawmidi_status_x32, tstamp)) ||
 	    put_user(status.avail, &src->avail) ||
 	    put_user(status.xruns, &src->xruns))
 		return -EFAULT;

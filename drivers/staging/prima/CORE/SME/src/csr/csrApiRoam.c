@@ -19161,7 +19161,7 @@ eHalStatus csrRoamUpdateAPWPSIE( tpAniSirGlobal pMac, tANI_U32 sessionId, tSirAP
         vos_mem_set(pMsg, sizeof(tSirUpdateAPWPSIEsReq), 0);
         pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_UPDATE_APWPSIE_REQ);
 
-        pBuf = (tANI_U8 *)&pMsg->transactionId;
+        pBuf = ((tANI_U8 *)pMsg) + offsetof(tSirUpdateAPWPSIEsReq, transactionId);
         VOS_ASSERT(pBuf);
 
         wTmpBuf = pBuf;
@@ -19200,7 +19200,7 @@ eHalStatus csrRoamUpdateWPARSNIEs( tpAniSirGlobal pMac, tANI_U32 sessionId, tSir
         if ( NULL == pMsg ) return eHAL_STATUS_FAILURE;
         vos_mem_set(pMsg, sizeof( tSirUpdateAPWPARSNIEsReq ), 0);
         pMsg->messageType = pal_cpu_to_be16((tANI_U16)eWNI_SME_SET_APWPARSNIEs_REQ);
-        pBuf = (tANI_U8 *)&pMsg->transactionId;
+        pBuf = ((tANI_U8 *)pMsg) + offsetof(tSirUpdateAPWPARSNIEsReq, transactionId);
         wTmpBuf = pBuf;
         // transactionId
         *pBuf = 0;
@@ -19549,9 +19549,17 @@ static void csrSerDesUnpackDiassocRsp(tANI_U8 *pBuf, tSirSmeDisassocRsp *pRsp)
    {
       pBuf += 4; //skip type and length
       pRsp->sessionId  = *pBuf++;
-      pal_get_U16( pBuf, (tANI_U16 *)&pRsp->transactionId );
+      {
+          tANI_U16 tempTid;
+          pal_get_U16( pBuf, &tempTid );
+          pRsp->transactionId = tempTid;
+      }
       pBuf += 2;
-      pal_get_U32( pBuf, (tANI_U32 *)&pRsp->statusCode );
+      {
+          tANI_U32 tempStatus;
+          pal_get_U32( pBuf, &tempStatus );
+          pRsp->statusCode = tempStatus;
+      }
       pBuf += 4;
       vos_mem_copy(pRsp->peerMacAddr, pBuf, 6);
    }

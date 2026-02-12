@@ -202,10 +202,12 @@ static int32_t sp_make_afe_callback(uint32_t *payload, uint32_t payload_size)
 	struct afe_spkr_prot_calib_get_resp *resp =
 		(struct afe_spkr_prot_calib_get_resp *) payload;
 
+/*
 	if (!(&(resp->pdata))) {
 		pr_err("%s: Error: resp pdata is NULL\n", __func__);
 		return -EINVAL;
 	}
+*/
 
 	param_id = resp->pdata.param_id;
 	if (param_id == AFE_PARAM_ID_CALIB_RES_CFG_V2) {

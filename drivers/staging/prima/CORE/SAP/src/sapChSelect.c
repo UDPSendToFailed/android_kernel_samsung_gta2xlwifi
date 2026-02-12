@@ -1479,7 +1479,7 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
         vhtSupport = 0;
         centerFreq = 0;
 
-        if (pScanResult->BssDescriptor.ieFields != NULL)
+        if (1)
         {
             ieLen = GET_IE_LEN_IN_BSS(pScanResult->BssDescriptor.length);
             vos_mem_set((tANI_U8 *) pBeaconStruct, sizeof(tSirProbeRespBeacon), 0);
@@ -1532,9 +1532,10 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
                     switch(pSpectCh->channelWidth)
                     {
                         case eHT_CHANNEL_WIDTH_40MHZ: //HT40
-                            switch( secondaryChannelOffset)
                             {
                                 tSapSpectChInfo *pExtSpectCh = NULL;
+                                switch( secondaryChannelOffset)
+                                {
                                 case PHY_DOUBLE_CHANNEL_LOW_PRIMARY: // Above the Primary Channel
                                     pExtSpectCh = (pSpectCh + 1);
                                     if( pExtSpectCh != NULL &&
@@ -1759,7 +1760,8 @@ void sapComputeSpectWeight( tSapChSelSpectInfo* pSpectInfoParams,
                         break;
                     }
                 }
-                else if(operatingBand == eSAP_RF_SUBBAND_2_4_GHZ)
+            }
+            else if(operatingBand == eSAP_RF_SUBBAND_2_4_GHZ)
                 {
                      sapInterferenceRssiCount(pSpectCh, pSpectChStartAddr,
                                               pSpectChEndAddr);

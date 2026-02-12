@@ -2394,9 +2394,11 @@ ssize_t ext4_mb_freefrag_show(struct ext4_sb_info *sbi, char *buf)
 					sg.info.bb_counters[i] : 0;
 	}
 out:
-	for (i = 0; i < EXT4_FREEFRAG_COLUMN; i++)
-		snprintf(buf, PAGE_SIZE, "%s\"%s\":\"%llu\",", buf, size[i],
+	for (i = 0; i < EXT4_FREEFRAG_COLUMN; i++) {
+		int len = strlen(buf);
+		snprintf(buf + len, PAGE_SIZE - len, "\"%s\":\"%llu\",", size[i],
 			(unsigned long long)freeblock[i]);
+	}
 	buf[strlen(buf)-1] = '\n';
 
 	return strlen(buf);

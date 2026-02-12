@@ -2356,7 +2356,9 @@ static inline int offset_in_addr(struct f2fs_inode *i)
 
 static inline __le32 *blkaddr_in_node(struct f2fs_node *node)
 {
-	return RAW_IS_INODE(node) ? node->i.i_addr : node->dn.addr;
+	return RAW_IS_INODE(node) ?
+		(__le32 *)((unsigned char *)node + offsetof(struct f2fs_inode, i_addr)) :
+		(__le32 *)((unsigned char *)node + offsetof(struct direct_node, addr));
 }
 
 static inline int f2fs_has_extra_attr(struct inode *inode);

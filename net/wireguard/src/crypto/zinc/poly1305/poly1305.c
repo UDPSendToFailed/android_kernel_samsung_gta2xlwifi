@@ -73,7 +73,7 @@ static inline void poly1305_blocks(void *ctx, const u8 *input, const size_t len,
 		poly1305_blocks_generic(ctx, input, len, padbit);
 }
 
-static inline void poly1305_emit(void *ctx, u8 mac[POLY1305_KEY_SIZE],
+static inline void poly1305_emit(void *ctx, u8 mac[POLY1305_MAC_SIZE],
 				 const u32 nonce[4],
 				 simd_context_t *simd_context)
 {

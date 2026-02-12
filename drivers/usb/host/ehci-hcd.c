@@ -331,7 +331,7 @@ static void ehci_turn_off_all_ports(struct ehci_hcd *ehci)
 
 	while (port--)
 		ehci_writel(ehci, PORT_RWC_BITS,
-				&ehci->regs->port_status[port]);
+				(u32 __iomem *)ehci->regs->port_status + port);
 }
 
 /*
@@ -778,7 +778,7 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 			if (!(ppcd & (1 << i)))
 				continue;
 			pstatus = ehci_readl(ehci,
-					 &ehci->regs->port_status[i]);
+					 (u32 __iomem *)ehci->regs->port_status + i);
 
 			/*set RS bit in case of remote wakeup*/
 			if (ehci_is_TDI(ehci) && !(cmd & CMD_RUN) &&

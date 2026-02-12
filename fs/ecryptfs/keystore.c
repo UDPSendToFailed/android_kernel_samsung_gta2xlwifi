@@ -1185,13 +1185,18 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 	int rc;
 	char full_cipher[ECRYPTFS_MAX_CIPHER_NAME_SIZE];
 
+	struct ecryptfs_session_key session_key_tmp;
+
 	rc = ecryptfs_get_auth_tok_sig(&auth_tok_sig, auth_tok);
 	if (rc) {
 		printk(KERN_ERR "Unrecognized auth tok type: [%d]\n",
 		       auth_tok->token_type);
 		goto out;
 	}
-	rc = write_tag_64_packet(auth_tok_sig, &(auth_tok->session_key),
+	
+	memcpy(&session_key_tmp, &auth_tok->session_key, sizeof(session_key_tmp));
+	
+	rc = write_tag_64_packet(auth_tok_sig, &session_key_tmp,
 				 &payload, &payload_len);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Failed to write tag 64 packet\n");
@@ -1210,8 +1215,11 @@ decrypt_pki_encrypted_session_key(struct ecryptfs_auth_tok *auth_tok,
 		rc = -EIO;
 		goto out;
 	}
-	rc = parse_tag_65_packet(&(auth_tok->session_key),
+	rc = parse_tag_65_packet(&session_key_tmp,
 				 &cipher_code, msg);
+	
+	memcpy(&auth_tok->session_key, &session_key_tmp, sizeof(session_key_tmp));
+	
 	if (rc) {
 		printk(KERN_ERR "Failed to parse tag 65 packet; rc = [%d]\n",
 		       rc);

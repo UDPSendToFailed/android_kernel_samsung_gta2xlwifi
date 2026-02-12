@@ -218,6 +218,9 @@ static int mip6_destopt_reject(struct xfrm_state *x, struct sk_buff *skb,
 	struct timeval stamp;
 	int err = 0;
 
+	struct in6_addr hao_addr;
+	struct in6_addr *src_addr;
+
 	if (unlikely(fl6->flowi6_proto == IPPROTO_MH &&
 		     fl6->fl6_mh_type <= IP6_MH_TYPE_MAX))
 		goto out;
@@ -231,8 +234,15 @@ static int mip6_destopt_reject(struct xfrm_state *x, struct sk_buff *skb,
 
 	skb_get_timestamp(skb, &stamp);
 
+	if (hao) {
+		memcpy(&hao_addr, &hao->addr, sizeof(hao_addr));
+		src_addr = &hao_addr;
+	} else {
+		src_addr = &ipv6_hdr(skb)->saddr;
+	}
+
 	if (!mip6_report_rl_allow(&stamp, &ipv6_hdr(skb)->daddr,
-				  hao ? &hao->addr : &ipv6_hdr(skb)->saddr,
+				  src_addr,
 				  opt->iif))
 		goto out;
 
@@ -254,7 +264,7 @@ static int mip6_destopt_reject(struct xfrm_state *x, struct sk_buff *skb,
 	sel.ifindex = fl6->flowi6_oif;
 
 	err = km_report(net, IPPROTO_DSTOPTS, &sel,
-			(hao ? (xfrm_address_t *)&hao->addr : NULL));
+			(hao ? (xfrm_address_t *)src_addr : NULL));
 
  out:
 	return err;

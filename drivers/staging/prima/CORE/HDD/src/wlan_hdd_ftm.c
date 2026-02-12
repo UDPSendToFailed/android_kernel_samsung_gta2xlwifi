@@ -1905,11 +1905,13 @@ int wlan_hdd_ftm_get_nv_table
    tPttMsgbuffer  *ftmCmd
 )
 {
+   eNvVersionType      nvVersion;
    VOS_STATUS          nvStatus = VOS_STATUS_SUCCESS;
-   pttGetNvTable      *nvTable = (pttGetNvTable *)&ftmCmd->msgBody.GetNvTable;
+   pttGetNvTable      nvTableVal;
+   pttGetNvTable      *nvTable = &nvTableVal;
    v_SIZE_t            nvSize;
    sHalNvV2           *nvContents = NULL;
-   eNvVersionType      nvVersion;
+   memcpy(&nvTableVal, &ftmCmd->msgBody.GetNvTable, sizeof(nvTableVal));
 
    if (NULL == pHddCtx)
    {
@@ -2077,11 +2079,13 @@ int wlan_hdd_ftm_set_nv_table
    tPttMsgbuffer  *ftmCmd
 )
 {
+   eNvVersionType      nvVersion;
    VOS_STATUS          nvStatus = VOS_STATUS_SUCCESS;
-   pttSetNvTable      *nvTable = (pttSetNvTable *)&ftmCmd->msgBody.SetNvTable;
+   pttSetNvTable      nvTableVal;
+   pttSetNvTable      *nvTable = &nvTableVal;
    v_SIZE_t            nvSize;
    sHalNvV2           *nvContents = NULL;
-   eNvVersionType      nvVersion;
+   memcpy(&nvTableVal, &ftmCmd->msgBody.SetNvTable, sizeof(nvTableVal));
 
    if (NULL == pHddCtx)
    {
@@ -2830,11 +2834,13 @@ static int wlan_hdd_ftm_get_nv_bin
 )
 {
    VOS_STATUS          nvStatus = VOS_STATUS_SUCCESS;
-   pttGetNvTable      *nvTable = (pttGetNvTable *)&ftmCmd->msgBody.GetNvBin;
+   pttGetNvTable      nvTableVal;
+   pttGetNvTable      *nvTable = &nvTableVal;
    v_SIZE_t            nvSize;
    v_U8_t             *nvContents;
-   v_U16_t offset = 0;
+   v_U16_t             offset = 0;
    eNvVersionType      nvVersion;
+   memcpy(&nvTableVal, &ftmCmd->msgBody.GetNvBin, sizeof(nvTableVal));
 
    nvVersion = vos_nv_getNvVersion();
    if (E_NV_V3 != nvVersion)
@@ -2965,8 +2971,10 @@ static int wlan_hdd_ftm_set_nv_bin
 )
 {
    VOS_STATUS          nvStatus = VOS_STATUS_SUCCESS;
-   pttSetNvTable      *nvTable = (pttSetNvTable *)&ftmCmd->msgBody.SetNvBin;
+   pttSetNvTable      nvTableVal;
+   pttSetNvTable      *nvTable = &nvTableVal;
    eNvVersionType      nvVersion;
+   memcpy(&nvTableVal, &ftmCmd->msgBody.SetNvBin, sizeof(nvTableVal));
 
    nvVersion = vos_nv_getNvVersion();
    if (E_NV_V3 != nvVersion)
@@ -3168,8 +3176,11 @@ int wlan_hdd_process_ftm_host_cmd
          break;
 
       case PTT_MSG_DBG_READ_REGISTER:
-         wpalReadRegister(pFTMCmd->msgBody.DbgReadRegister.regAddr,
-                          &pFTMCmd->msgBody.DbgReadRegister.regValue);
+         {
+             v_U32_t val;
+             wpalReadRegister(pFTMCmd->msgBody.DbgReadRegister.regAddr, &val);
+             pFTMCmd->msgBody.DbgReadRegister.regValue = val;
+         }
          needToRouteHal = 0;
          break;
 

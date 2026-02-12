@@ -71,7 +71,8 @@ static void q6usm_add_mmaphdr(struct apr_hdr *hdr,
 static int q6usm_memory_map(phys_addr_t buf_add, int dir, uint32_t bufsz,
 		uint32_t bufcnt, uint32_t session, uint32_t *mem_handle)
 {
-	struct usm_cmd_memory_map_region mem_region_map;
+	struct usm_cmd_memory_map_region mem_region_map __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 	int rc = 0;
 
 	if (this_mmap.apr == NULL) {
@@ -79,9 +80,11 @@ static int q6usm_memory_map(phys_addr_t buf_add, int dir, uint32_t bufsz,
 		return -EINVAL;
 	}
 
-	q6usm_add_mmaphdr(&mem_region_map.hdr,
+	memset(&mem_region_map, 0, sizeof(mem_region_map));
+	q6usm_add_mmaphdr(&local_hdr,
 			  sizeof(struct usm_cmd_memory_map_region), true,
 			  ((session << 8) | dir));
+	mem_region_map.hdr = local_hdr;
 
 	mem_region_map.hdr.opcode = USM_CMD_SHARED_MEM_MAP_REGION;
 	mem_region_map.mempool_id = ADSP_MEMORY_MAP_SHMEM8_4K_POOL;
@@ -119,7 +122,8 @@ fail_cmd:
 int q6usm_memory_unmap(phys_addr_t buf_add, int dir, uint32_t session,
 			uint32_t mem_handle)
 {
-	struct usm_cmd_memory_unmap_region mem_unmap;
+	struct usm_cmd_memory_unmap_region mem_unmap __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 	int rc = 0;
 
 	if (this_mmap.apr == NULL) {
@@ -127,9 +131,11 @@ int q6usm_memory_unmap(phys_addr_t buf_add, int dir, uint32_t session,
 		return -EINVAL;
 	}
 
-	q6usm_add_mmaphdr(&mem_unmap.hdr,
+	memset(&mem_unmap, 0, sizeof(mem_unmap));
+	q6usm_add_mmaphdr(&local_hdr,
 			  sizeof(struct usm_cmd_memory_unmap_region), true,
 			  ((session << 8) | dir));
+	mem_unmap.hdr = local_hdr;
 	mem_unmap.hdr.opcode = USM_CMD_SHARED_MEM_UNMAP_REGION;
 	mem_unmap.mem_map_handle = mem_handle;
 
@@ -816,7 +822,9 @@ int q6usm_open_read(struct us_client *usc,
 {
 	uint32_t int_format = INVALID_FORMAT;
 	int rc = 0x00;
-	struct usm_stream_cmd_open_read open;
+	/* struct usm_stream_cmd_open_read cmd; */
+	struct usm_stream_cmd_open_read cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if ((usc == NULL) || (usc->apr == NULL)) {
 		pr_err("%s: client or its apr is NULL\n", __func__);
@@ -825,22 +833,23 @@ int q6usm_open_read(struct us_client *usc,
 
 	pr_debug("%s: session[%d]", __func__, usc->session);
 
-	q6usm_add_hdr(usc, &open.hdr, sizeof(open), true);
-	open.hdr.opcode = USM_STREAM_CMD_OPEN_READ;
-	open.src_endpoint = 0; /* AFE */
-	open.pre_proc_top = 0; /* No preprocessing required */
+	q6usm_add_hdr(usc, &local_hdr, sizeof(cmd), true);
+	cmd.hdr = local_hdr;
+	cmd.hdr.opcode = USM_STREAM_CMD_OPEN_READ;
+	cmd.src_endpoint = 0; /* AFE */
+	cmd.pre_proc_top = 0; /* No preprocessing required */
 
 	int_format = q6usm_ext2int_format(format);
 	if (int_format == INVALID_FORMAT)
 		return -EINVAL;
 
-	open.uMode = STREAM_PRIORITY_NORMAL;
-	open.format = int_format;
+	cmd.uMode = STREAM_PRIORITY_NORMAL;
+	cmd.format = int_format;
 
-	rc = apr_send_pkt(usc->apr, (uint32_t *) &open);
+	rc = apr_send_pkt(usc->apr, (uint32_t *) &cmd);
 	if (rc < 0) {
 		pr_err("%s: open failed op[0x%x]rc[%d]\n",
-		       __func__, open.hdr.opcode, rc);
+		       __func__, cmd.hdr.opcode, rc);
 		goto fail_cmd;
 	}
 	rc = wait_event_timeout(usc->cmd_wait,
@@ -861,8 +870,9 @@ fail_cmd:
 int q6usm_enc_cfg_blk(struct us_client *usc, struct us_encdec_cfg *us_cfg)
 {
 	uint32_t int_format = INVALID_FORMAT;
-	struct usm_stream_cmd_encdec_cfg_blk  enc_cfg_obj;
-	struct usm_stream_cmd_encdec_cfg_blk  *enc_cfg = &enc_cfg_obj;
+	struct usm_stream_cmd_encdec_cfg_blk  cmd_obj __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
+	struct usm_stream_cmd_encdec_cfg_blk  *enc_cfg = &cmd_obj;
 	int rc = 0;
 	uint32_t total_cfg_size =
 		sizeof(struct usm_stream_cmd_encdec_cfg_blk);
@@ -900,8 +910,8 @@ int q6usm_enc_cfg_blk(struct us_client *usc, struct us_encdec_cfg *us_cfg)
 	} else
 		round_params_size = 0;
 
-	q6usm_add_hdr(usc, &enc_cfg->hdr, total_cfg_size, true);
-
+	q6usm_add_hdr(usc, &local_hdr, total_cfg_size, true);
+	enc_cfg->hdr = local_hdr;
 	enc_cfg->hdr.opcode = USM_STREAM_CMD_SET_ENC_PARAM;
 	enc_cfg->param_id = USM_PARAM_ID_ENCDEC_ENC_CFG_BLK;
 	enc_cfg->param_size = sizeof(struct usm_encode_cfg_blk)+
@@ -974,8 +984,9 @@ int q6usm_dec_cfg_blk(struct us_client *usc, struct us_encdec_cfg *us_cfg)
 {
 
 	uint32_t int_format = INVALID_FORMAT;
-	struct usm_stream_media_format_update dec_cfg_obj;
-	struct usm_stream_media_format_update *dec_cfg = &dec_cfg_obj;
+	struct usm_stream_media_format_update cmd_obj __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
+	struct usm_stream_media_format_update *dec_cfg = &cmd_obj;
 
 	int rc = 0;
 	uint32_t total_cfg_size = sizeof(struct usm_stream_media_format_update);
@@ -1014,8 +1025,8 @@ int q6usm_dec_cfg_blk(struct us_client *usc, struct us_encdec_cfg *us_cfg)
 		round_params_size = 0;
 	}
 
-	q6usm_add_hdr(usc, &dec_cfg->hdr, total_cfg_size, true);
-
+	q6usm_add_hdr(usc, &local_hdr, total_cfg_size, true);
+	dec_cfg->hdr = local_hdr;
 	dec_cfg->hdr.opcode = USM_DATA_CMD_MEDIA_FORMAT_UPDATE;
 	dec_cfg->format_id = int_format;
 	dec_cfg->cfg_size = sizeof(struct usm_cfg_common) +
@@ -1063,7 +1074,8 @@ int q6usm_open_write(struct us_client *usc,
 {
 	int rc = 0;
 	uint32_t int_format = INVALID_FORMAT;
-	struct usm_stream_cmd_open_write open;
+	struct usm_stream_cmd_open_write cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 
 	if ((usc == NULL) || (usc->apr == NULL)) {
 		pr_err("%s: APR handle NULL\n", __func__);
@@ -1072,8 +1084,9 @@ int q6usm_open_write(struct us_client *usc,
 
 	pr_debug("%s: session[%d]", __func__, usc->session);
 
-	q6usm_add_hdr(usc, &open.hdr, sizeof(open), true);
-	open.hdr.opcode = USM_STREAM_CMD_OPEN_WRITE;
+	q6usm_add_hdr(usc, &local_hdr, sizeof(cmd), true);
+	cmd.hdr = local_hdr;
+	cmd.hdr.opcode = USM_STREAM_CMD_OPEN_WRITE;
 
 	int_format = q6usm_ext2int_format(format);
 	if (int_format == INVALID_FORMAT) {
@@ -1081,12 +1094,12 @@ int q6usm_open_write(struct us_client *usc,
 		return -EINVAL;
 	}
 
-	open.format = int_format;
+	cmd.format = int_format;
 
-	rc = apr_send_pkt(usc->apr, (uint32_t *) &open);
+	rc = apr_send_pkt(usc->apr, (uint32_t *) &cmd);
 	if (rc < 0) {
 		pr_err("%s:open failed op[0x%x]rc[%d]\n", \
-		       __func__, open.hdr.opcode, rc);
+		       __func__, cmd.hdr.opcode, rc);
 		goto fail_cmd;
 	}
 	rc = wait_event_timeout(usc->cmd_wait,
@@ -1107,21 +1120,23 @@ fail_cmd:
 int q6usm_run(struct us_client *usc, uint32_t flags,
 	      uint32_t msw_ts, uint32_t lsw_ts)
 {
-	struct usm_stream_cmd_run run;
+	struct usm_stream_cmd_run cmd __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 	int rc = 0;
 
 	if ((usc == NULL) || (usc->apr == NULL)) {
 		pr_err("%s: APR handle NULL\n", __func__);
 		return -EINVAL;
 	}
-	q6usm_add_hdr(usc, &run.hdr, sizeof(run), true);
+	q6usm_add_hdr(usc, &local_hdr, sizeof(cmd), true);
+	cmd.hdr = local_hdr;
 
-	run.hdr.opcode = USM_SESSION_CMD_RUN;
-	run.flags    = flags;
-	run.msw_ts   = msw_ts;
-	run.lsw_ts   = lsw_ts;
+	cmd.hdr.opcode = USM_SESSION_CMD_RUN;
+	cmd.flags    = flags;
+	cmd.msw_ts   = msw_ts;
+	cmd.lsw_ts   = lsw_ts;
 
-	rc = apr_send_pkt(usc->apr, (uint32_t *) &run);
+	rc = apr_send_pkt(usc->apr, (uint32_t *) &cmd);
 	if (rc < 0) {
 		pr_err("%s: Commmand run failed[%d]\n", __func__, rc);
 		goto fail_cmd;
@@ -1151,6 +1166,7 @@ int q6usm_read(struct us_client *usc, uint32_t read_ind)
 	u32 read_counter = 0;
 	u32 loop_ind = 0;
 	u64 buf_addr = 0;
+	struct apr_hdr local_hdr;
 
 	if ((usc == NULL) || (usc->apr == NULL)) {
 		pr_err("%s: APR handle NULL\n", __func__);
@@ -1174,7 +1190,8 @@ int q6usm_read(struct us_client *usc, uint32_t read_ind)
 		read_counter = (port->buf_cnt - port->cpu_buf) + read_ind;
 	}
 
-	q6usm_add_hdr(usc, &read.hdr, sizeof(read), false);
+	q6usm_add_hdr(usc, &local_hdr, sizeof(read), false);
+	read.hdr = local_hdr;
 
 	read.hdr.opcode = USM_DATA_CMD_READ;
 	read.buf_size = port->buf_size;
@@ -1216,7 +1233,8 @@ int q6usm_read(struct us_client *usc, uint32_t read_ind)
 int q6usm_write(struct us_client *usc, uint32_t write_ind)
 {
 	int rc = 0;
-	struct usm_stream_cmd_write cmd_write;
+	struct usm_stream_cmd_write write __attribute__((aligned(4)));
+	struct apr_hdr local_hdr;
 	struct us_port_data *port = NULL;
 	u32 current_dsp_buf = 0;
 	u64 buf_addr = 0;
@@ -1250,39 +1268,40 @@ int q6usm_write(struct us_client *usc, uint32_t write_ind)
 		}
 	}
 
-	q6usm_add_hdr(usc, &cmd_write.hdr, sizeof(cmd_write), false);
+	q6usm_add_hdr(usc, &local_hdr, sizeof(write), false);
+	write.hdr = local_hdr;
 
-	cmd_write.hdr.opcode = USM_DATA_CMD_WRITE;
-	cmd_write.buf_size = port->buf_size;
+	write.hdr.opcode = USM_DATA_CMD_WRITE;
+	write.buf_size = port->buf_size;
 	buf_addr = (u64)(port->phys) + port->buf_size * (port->cpu_buf);
-	cmd_write.buf_addr_lsw = lower_32_bits(buf_addr);
-	cmd_write.buf_addr_msw = msm_audio_populate_upper_32_bits(buf_addr);
-	cmd_write.mem_map_handle = *((uint32_t *)(port->ext));
-	cmd_write.res0 = 0;
-	cmd_write.res1 = 0;
-	cmd_write.res2 = 0;
+	write.buf_addr_lsw = lower_32_bits(buf_addr);
+	write.buf_addr_msw = msm_audio_populate_upper_32_bits(buf_addr);
+	write.mem_map_handle = *((uint32_t *)(port->ext));
+	write.res0 = 0;
+	write.res1 = 0;
+	write.res2 = 0;
 
 	while (port->cpu_buf != write_ind) {
 		u32 temp_cpu_buf = port->cpu_buf;
 
 		buf_addr = (u64)(port->phys) +
 				port->buf_size * (port->cpu_buf);
-		cmd_write.buf_addr_lsw = lower_32_bits(buf_addr);
-		cmd_write.buf_addr_msw =
+		write.buf_addr_lsw = lower_32_bits(buf_addr);
+		write.buf_addr_msw =
 				msm_audio_populate_upper_32_bits(buf_addr);
-		cmd_write.seq_id = port->cpu_buf;
-		cmd_write.hdr.token = port->cpu_buf;
+		write.seq_id = port->cpu_buf;
+		write.hdr.token = port->cpu_buf;
 
 		++(port->cpu_buf);
 		if (port->cpu_buf == port->buf_cnt)
 			port->cpu_buf = 0;
 
-		rc = apr_send_pkt(usc->apr, (uint32_t *) &cmd_write);
+		rc = apr_send_pkt(usc->apr, (uint32_t *) &write);
 
 		if (rc < 0) {
 			port->cpu_buf = temp_cpu_buf;
 			pr_err("%s:write op[0x%x];rc[%d];cpu_buf[%d]\n",
-			       __func__, cmd_write.hdr.opcode,
+			       __func__, write.hdr.opcode,
 			       rc, port->cpu_buf);
 			break;
 		}
@@ -1356,6 +1375,7 @@ int q6usm_set_us_detection(struct us_client *usc,
 			   uint16_t detect_info_size)
 {
 	int rc = 0;
+	struct apr_hdr local_hdr;
 
 	if ((usc == NULL) ||
 	    (detect_info_size == 0) ||
@@ -1368,7 +1388,8 @@ int q6usm_set_us_detection(struct us_client *usc,
 		return -EINVAL;
 	}
 
-	q6usm_add_hdr(usc, &detect_info->hdr, detect_info_size, true);
+	q6usm_add_hdr(usc, &local_hdr, detect_info_size, true);
+	detect_info->hdr = local_hdr;
 
 	detect_info->hdr.opcode = USM_SESSION_CMD_SIGNAL_DETECT_MODE;
 
@@ -1394,8 +1415,9 @@ int q6usm_set_us_stream_param(int dir, struct us_client *usc,
 		uint32_t module_id, uint32_t param_id, uint32_t buf_size)
 {
 	int rc = 0;
-	struct usm_stream_cmd_set_param cmd_set_param;
+	struct usm_stream_cmd_set_param cmd_set_param __attribute__((aligned(4)));
 	struct us_port_data *port = NULL;
+	struct apr_hdr local_hdr;
 
 	if ((usc == NULL) || (usc->apr == NULL)) {
 		pr_err("%s: APR handle NULL\n", __func__);
@@ -1403,7 +1425,8 @@ int q6usm_set_us_stream_param(int dir, struct us_client *usc,
 	}
 	port = &usc->port[dir];
 
-	q6usm_add_hdr(usc, &cmd_set_param.hdr, sizeof(cmd_set_param), true);
+	q6usm_add_hdr(usc, &local_hdr, sizeof(cmd_set_param), true);
+	cmd_set_param.hdr = local_hdr;
 
 	cmd_set_param.hdr.opcode = USM_STREAM_CMD_SET_PARAM;
 	cmd_set_param.buf_size = buf_size;
@@ -1440,8 +1463,9 @@ int q6usm_get_us_stream_param(int dir, struct us_client *usc,
 		uint32_t module_id, uint32_t param_id, uint32_t buf_size)
 {
 	int rc = 0;
-	struct usm_stream_cmd_get_param cmd_get_param;
+	struct usm_stream_cmd_get_param cmd_get_param __attribute__((aligned(4)));
 	struct us_port_data *port = NULL;
+	struct apr_hdr local_hdr;
 
 	if ((usc == NULL) || (usc->apr == NULL)) {
 		pr_err("%s: APR handle NULL\n", __func__);
@@ -1449,7 +1473,8 @@ int q6usm_get_us_stream_param(int dir, struct us_client *usc,
 	}
 	port = &usc->port[dir];
 
-	q6usm_add_hdr(usc, &cmd_get_param.hdr, sizeof(cmd_get_param), true);
+	q6usm_add_hdr(usc, &local_hdr, sizeof(cmd_get_param), true);
+	cmd_get_param.hdr = local_hdr;
 
 	cmd_get_param.hdr.opcode = USM_STREAM_CMD_GET_PARAM;
 	cmd_get_param.buf_size = buf_size;

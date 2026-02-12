@@ -44,7 +44,7 @@ static unsigned bam_ch_ids[BAM_N_PORTS] = {
 	BAM_DMUX_USB_DPL
 };
 
-static char bam_ch_names[BAM_N_PORTS][BAM_DMUX_CH_NAME_MAX_LEN];
+char gbam_ch_names[BAM_N_PORTS][BAM_DMUX_CH_NAME_MAX_LEN];
 
 static const enum ipa_client_type usb_prod[BAM2BAM_N_PORTS] = {
 	IPA_CLIENT_USB_PROD, IPA_CLIENT_USB2_PROD,
@@ -1734,12 +1734,12 @@ static int gbam_data_ch_probe(struct platform_device *pdev)
 
 	pr_debug("%s: name:%s\n", __func__, pdev->name);
 
-	for (i = 0; i < n_bam_ports; i++) {
+	/* Explicitly verify bounds to prevent GCC 15 overread warning */
+	for (i = 0; i < n_bam_ports && i < BAM_N_PORTS; i++) {
 		port = bam_ports[i].port;
 		d = &port->data_ch;
 
-		if (!strncmp(bam_ch_names[i], pdev->name,
-					BAM_DMUX_CH_NAME_MAX_LEN)) {
+		if (!strcmp(gbam_ch_names[i], pdev->name)) {
 			set_bit(BAM_CH_READY, &d->flags);
 
 			/* if usb is online, try opening bam_ch */
@@ -1771,9 +1771,9 @@ static int gbam_data_ch_remove(struct platform_device *pdev)
 
 	pr_debug("%s: name:%s\n", __func__, pdev->name);
 
-	for (i = 0; i < n_bam_ports; i++) {
-		if (!strncmp(bam_ch_names[i], pdev->name,
-					BAM_DMUX_CH_NAME_MAX_LEN)) {
+	/* Explicitly verify bounds to prevent GCC 15 overread warning */
+	for (i = 0; i < n_bam_ports && i < BAM_N_PORTS; i++) {
+		if (!strcmp(gbam_ch_names[i], pdev->name)) {
 			port = bam_ports[i].port;
 			d = &port->data_ch;
 
@@ -1859,12 +1859,12 @@ static int gbam_port_alloc(int portno)
 
 	bam_ports[portno].port = port;
 
-	scnprintf(bam_ch_names[portno], BAM_DMUX_CH_NAME_MAX_LEN,
+	scnprintf(gbam_ch_names[portno], BAM_DMUX_CH_NAME_MAX_LEN,
 			"bam_dmux_ch_%d", bam_ch_ids[portno]);
 	pdrv = &bam_ports[portno].pdrv;
 	pdrv->probe = gbam_data_ch_probe;
 	pdrv->remove = gbam_data_ch_remove;
-	pdrv->driver.name = bam_ch_names[portno];
+	pdrv->driver.name = gbam_ch_names[portno];
 	pdrv->driver.owner = THIS_MODULE;
 
 	platform_driver_register(pdrv);

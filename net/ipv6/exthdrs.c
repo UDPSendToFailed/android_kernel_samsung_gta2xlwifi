@@ -181,6 +181,7 @@ static bool ipv6_dest_hao(struct sk_buff *skb, int optoff)
 	struct inet6_skb_parm *opt = IP6CB(skb);
 	struct ipv6hdr *ipv6h = ipv6_hdr(skb);
 	struct in6_addr tmp_addr;
+	struct in6_addr val_addr;
 	int ret;
 
 	if (opt->dsthao) {
@@ -192,20 +193,28 @@ static bool ipv6_dest_hao(struct sk_buff *skb, int optoff)
 
 	hao = (struct ipv6_destopt_hao *)(skb_network_header(skb) + optoff);
 
+	/*
+	 * Make a local copy to avoid unaligned access warnings/issues,
+	 * as hao->addr is packed and might be unaligned.
+	 */
+
+
 	if (hao->length != 16) {
 		LIMIT_NETDEBUG(
 			KERN_DEBUG "hao invalid option length = %d\n", hao->length);
 		goto discard;
 	}
 
-	if (!(ipv6_addr_type(&hao->addr) & IPV6_ADDR_UNICAST)) {
+	memcpy(&val_addr, &hao->addr, sizeof(val_addr));
+
+	if (!(ipv6_addr_type(&val_addr) & IPV6_ADDR_UNICAST)) {
 		LIMIT_NETDEBUG(
-			KERN_DEBUG "hao is not an unicast addr: %pI6\n", &hao->addr);
+			KERN_DEBUG "hao is not an unicast addr: %pI6\n", &val_addr);
 		goto discard;
 	}
 
 	ret = xfrm6_input_addr(skb, (xfrm_address_t *)&ipv6h->daddr,
-			       (xfrm_address_t *)&hao->addr, IPPROTO_DSTOPTS);
+			       (xfrm_address_t *)&val_addr, IPPROTO_DSTOPTS);
 	if (unlikely(ret < 0))
 		goto discard;
 
@@ -223,7 +232,7 @@ static bool ipv6_dest_hao(struct sk_buff *skb, int optoff)
 		skb->ip_summed = CHECKSUM_NONE;
 
 	tmp_addr = ipv6h->saddr;
-	ipv6h->saddr = hao->addr;
+	ipv6h->saddr = val_addr;
 	hao->addr = tmp_addr;
 
 	if (skb->tstamp.tv64 == 0)
@@ -349,7 +358,8 @@ looped_back:
 		skb->transport_header += (hdr->hdrlen + 1) << 3;
 		opt->dst0 = opt->dst1;
 		opt->dst1 = 0;
-		opt->nhoff = (&hdr->nexthdr) - skb_network_header(skb);
+		opt->nhoff = ((unsigned char *)hdr - skb_network_header(skb)) +
+			     offsetof(struct ipv6_rt_hdr, nexthdr);
 		return 1;
 	}
 
@@ -382,8 +392,8 @@ looped_back:
 		IP6_INC_STATS_BH(net, ip6_dst_idev(skb_dst(skb)),
 				 IPSTATS_MIB_INHDRERRORS);
 		icmpv6_param_prob(skb, ICMPV6_HDR_FIELD,
-				  ((&hdr->segments_left) -
-				   skb_network_header(skb)));
+				  ((unsigned char *)hdr - skb_network_header(skb)) +
+				  offsetof(struct ipv6_rt_hdr, segments_left));
 		return -1;
 	}
 
@@ -472,7 +482,8 @@ looped_back:
 unknown_rh:
 	IP6_INC_STATS_BH(net, ip6_dst_idev(skb_dst(skb)), IPSTATS_MIB_INHDRERRORS);
 	icmpv6_param_prob(skb, ICMPV6_HDR_FIELD,
-			  (&hdr->type) - skb_network_header(skb));
+			  ((unsigned char *)hdr - skb_network_header(skb)) +
+			  offsetof(struct ipv6_rt_hdr, type));
 	return -1;
 }
 

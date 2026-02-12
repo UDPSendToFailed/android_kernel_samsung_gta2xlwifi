@@ -865,7 +865,7 @@ eHalStatus sapCheck40Mhz24G(tHalHandle halHandle, ptSapContext psapCtx,
             goto NextResult;
         }
 
-        if ((pScanResult->BssDescriptor.ieFields != NULL))
+        if (1)
         {
             ieLen = GET_IE_LEN_IN_BSS(pScanResult->BssDescriptor.length);
             vos_mem_set((tANI_U8 *) pBeaconStruct,

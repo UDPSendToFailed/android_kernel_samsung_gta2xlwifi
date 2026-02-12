@@ -42,7 +42,7 @@ u32 __initdata __visible main_extable_sort_needed = 1;
 /* Sort the kernel's built-in exception table */
 void __init sort_main_extable(void)
 {
-	if (main_extable_sort_needed && __stop___ex_table > __start___ex_table) {
+	if (main_extable_sort_needed && (unsigned long)__stop___ex_table > (unsigned long)__start___ex_table) {
 #ifdef CONFIG_KERNEL_TEXT_RDONLY
 		unsigned long start = PFN_DOWN((unsigned long)__start___ex_table);
 		unsigned long end = PFN_UP((unsigned long)__stop___ex_table);
@@ -57,16 +57,19 @@ void __init sort_main_extable(void)
 	}
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 /* Given an address, look for it in the exception tables. */
 const struct exception_table_entry *search_exception_tables(unsigned long addr)
 {
 	const struct exception_table_entry *e;
 
-	e = search_extable(__start___ex_table, __stop___ex_table-1, addr);
+	e = search_extable(__start___ex_table, __stop___ex_table - 1, addr);
 	if (!e)
 		e = search_module_extables(addr);
 	return e;
 }
+#pragma GCC diagnostic pop
 
 static inline int init_kernel_text(unsigned long addr)
 {

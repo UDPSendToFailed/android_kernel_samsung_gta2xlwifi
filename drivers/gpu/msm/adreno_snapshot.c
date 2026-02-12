@@ -459,10 +459,16 @@ static size_t snapshot_rb(struct kgsl_device *device, u8 *buf,
 	header->rptr = adreno_get_rptr(rb);
 	header->rbsize = KGSL_RB_DWORDS;
 	header->count = KGSL_RB_DWORDS;
-	adreno_rb_readtimestamp(adreno_dev, rb, KGSL_TIMESTAMP_QUEUED,
-					&header->timestamp_queued);
-	adreno_rb_readtimestamp(adreno_dev, rb, KGSL_TIMESTAMP_RETIRED,
-					&header->timestamp_retired);
+	{
+		unsigned int ts;
+		adreno_rb_readtimestamp(adreno_dev, rb, KGSL_TIMESTAMP_QUEUED, &ts);
+		header->timestamp_queued = ts;
+	}
+	{
+		unsigned int ts;
+		adreno_rb_readtimestamp(adreno_dev, rb, KGSL_TIMESTAMP_RETIRED, &ts);
+		header->timestamp_retired = ts;
+	}
 	header->gpuaddr = rb->buffer_desc.gpuaddr;
 	header->id = rb->id;
 

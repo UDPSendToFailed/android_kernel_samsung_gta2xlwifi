@@ -1354,6 +1354,9 @@ static inline void skb_queue_head_init_class(struct sk_buff_head *list,
  */
 void skb_insert(struct sk_buff *old, struct sk_buff *newsk,
 		struct sk_buff_head *list);
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 static inline void __skb_insert(struct sk_buff *newsk,
 				struct sk_buff *prev, struct sk_buff *next,
 				struct sk_buff_head *list)
@@ -1363,7 +1366,10 @@ static inline void __skb_insert(struct sk_buff *newsk,
 	next->prev  = prev->next = newsk;
 	list->qlen++;
 }
+#pragma GCC diagnostic pop
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 static inline void __skb_queue_splice(const struct sk_buff_head *list,
 				      struct sk_buff *prev,
 				      struct sk_buff *next)
@@ -1377,6 +1383,7 @@ static inline void __skb_queue_splice(const struct sk_buff_head *list,
 	last->next = next;
 	next->prev = last;
 }
+#pragma GCC diagnostic pop
 
 /**
  *	skb_queue_splice - join two skb lists, this is designed for stacks
@@ -1462,12 +1469,15 @@ static inline void __skb_queue_after(struct sk_buff_head *list,
 void skb_append(struct sk_buff *old, struct sk_buff *newsk,
 		struct sk_buff_head *list);
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 static inline void __skb_queue_before(struct sk_buff_head *list,
 				      struct sk_buff *next,
 				      struct sk_buff *newsk)
 {
 	__skb_insert(newsk, next->prev, next, list);
 }
+#pragma GCC diagnostic pop
 
 /**
  *	__skb_queue_head - queue a buffer at the list head
@@ -1480,11 +1490,14 @@ static inline void __skb_queue_before(struct sk_buff_head *list,
  *	A buffer cannot be placed on two lists at the same time.
  */
 void skb_queue_head(struct sk_buff_head *list, struct sk_buff *newsk);
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Warray-bounds"
 static inline void __skb_queue_head(struct sk_buff_head *list,
 				    struct sk_buff *newsk)
 {
 	__skb_queue_after(list, (struct sk_buff *)list, newsk);
 }
+#pragma GCC diagnostic pop
 
 /**
  *	__skb_queue_tail - queue a buffer at the list tail

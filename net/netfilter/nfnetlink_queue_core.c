@@ -376,7 +376,7 @@ nfqnl_build_packet_message(struct net *net, struct nfqnl_instance *queue,
 	pmsg = nla_data(nla);
 	pmsg->hw_protocol	= entskb->protocol;
 	pmsg->hook		= entry->hook;
-	*packet_id_ptr		= &pmsg->packet_id;
+	*packet_id_ptr		= (__be32 *)((void *)pmsg + offsetof(struct nfqnl_msg_packet_hdr, packet_id));
 
 	indev = entry->indev;
 	if (indev) {

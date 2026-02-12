@@ -138,7 +138,7 @@ int32_t msm_camera_cci_i2c_write_seq(struct msm_camera_i2c_client *client,
 	struct msm_camera_cci_ctrl cci_ctrl;
 	struct msm_camera_i2c_reg_array *reg_conf_tbl = NULL;
 	struct msm_camera_i2c_reg_array reg_tbl_onstack[
-		SZ_4K / sizeof(struct msm_camera_i2c_reg_array)];
+		128 / sizeof(struct msm_camera_i2c_reg_array)];
 
 	if ((client->addr_type != MSM_CAMERA_I2C_BYTE_ADDR
 		&& client->addr_type != MSM_CAMERA_I2C_WORD_ADDR)

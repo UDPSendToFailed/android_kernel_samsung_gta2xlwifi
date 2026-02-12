@@ -747,7 +747,7 @@ static int32_t msm_cci_data_queue(struct cci_device *cci_dev,
 				data[i++] = i2c_cmd->reg_data;
 				reg_addr++;
 			} else {
-				if ((i + 1) <= cci_dev->payload_size) {
+				if ((i + 2) <= cci_dev->payload_size && (i + 2) <= sizeof(data)) {
 					data[i++] = (i2c_cmd->reg_data &
 						0xFF00) >> 8; /* MSB */
 					data[i++] = i2c_cmd->reg_data &

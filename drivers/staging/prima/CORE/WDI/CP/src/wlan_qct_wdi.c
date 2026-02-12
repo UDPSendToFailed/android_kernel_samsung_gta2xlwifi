@@ -10036,8 +10036,18 @@ WDI_ProcessPostAssocReq
 
   wpalMutexRelease(&pWDICtx->wptMutex);
 
-  uMsgSize = sizeof(halPostAssocReqMsg.postAssocReqParams.configStaParams) +
-             sizeof(halPostAssocReqMsg.postAssocReqParams.configBssParams) ;
+#ifdef WLAN_FEATURE_11AC
+  if (WDI_getFwWlanFeatCaps(DOT11AC))
+  {
+      uMsgSize = sizeof(halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams_V1) +
+                 sizeof(halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams_V1) ;
+  }
+  else
+#endif
+  {
+      uMsgSize = sizeof(halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams) +
+                 sizeof(halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams) ;
+  }
   /*-----------------------------------------------------------------------
     Fill message for tx over the bus
   -----------------------------------------------------------------------*/
@@ -10053,14 +10063,15 @@ WDI_ProcessPostAssocReq
   }
 
   /*Copy the STA parameters */
-  WDI_CopyWDIStaCtxToHALStaCtx(&halPostAssocReqMsg.postAssocReqParams.configStaParams,
+  /*Copy the STA parameters */
+  WDI_CopyWDIStaCtxToHALStaCtx(&halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams,
                                &pwdiPostAssocParams->wdiSTAParams );
 
   /* Need to fill in the self STA Index */
   if ( WDI_STATUS_SUCCESS !=
        WDI_STATableFindStaidByAddr(pWDICtx,
                                    pwdiPostAssocParams->wdiSTAParams.macSTA,
-                                   (wpt_uint8*)&halPostAssocReqMsg.postAssocReqParams.configStaParams.staIdx ))
+                                   (wpt_uint8*)&halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams.staIdx ))
   {
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                 MAC_ADDRESS_STR
@@ -10072,18 +10083,20 @@ WDI_ProcessPostAssocReq
   }
 
   /* Need to fill in the BSS index */
-  halPostAssocReqMsg.postAssocReqParams.configStaParams.bssIdx =
+  /* Need to fill in the BSS index */
+  halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams.bssIdx =
      pBSSSes->ucBSSIdx;
 
   /*Copy the BSS parameters */
-  WDI_CopyWDIConfigBSSToHALConfigBSS( &halPostAssocReqMsg.postAssocReqParams.configBssParams,
+  /*Copy the BSS parameters */
+  WDI_CopyWDIConfigBSSToHALConfigBSS( &halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams,
                                       &pwdiPostAssocParams->wdiBSSParams);
 
   /* Need to fill in the STA index of the peer */
   if ( WDI_STATUS_SUCCESS !=
        WDI_STATableFindStaidByAddr(pWDICtx,
                                    pwdiPostAssocParams->wdiBSSParams.wdiSTAContext.macSTA,
-                                   (wpt_uint8*)&halPostAssocReqMsg.postAssocReqParams.configBssParams.staContext.staIdx))
+                                   (wpt_uint8*)&halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams.staContext.staIdx))
   {
     WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_WARN,
                 MAC_ADDRESS_STR
@@ -10095,19 +10108,37 @@ WDI_ProcessPostAssocReq
   }
 
   /* Need to fill in the BSS index */
-  halPostAssocReqMsg.postAssocReqParams.configStaParams.bssIdx =
+  /* Need to fill in the BSS index */
+  halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams.bssIdx =
      pBSSSes->ucBSSIdx;
 
 
-  wpalMemoryCopy( pSendBuffer+usDataOffset,
-                  &halPostAssocReqMsg.postAssocReqParams.configStaParams,
-                  sizeof(halPostAssocReqMsg.postAssocReqParams.configStaParams));
+#ifdef WLAN_FEATURE_11AC
+  if (WDI_getFwWlanFeatCaps(DOT11AC))
+  {
+     wpalMemoryCopy( pSendBuffer+usDataOffset,
+                     &halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams_V1,
+                     sizeof(halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams_V1));
 
-  uOffset = sizeof(halPostAssocReqMsg.postAssocReqParams.configStaParams);
+     uOffset = sizeof(halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams_V1);
 
-  wpalMemoryCopy( pSendBuffer+usDataOffset + uOffset,
-                  &halPostAssocReqMsg.postAssocReqParams.configBssParams,
-                  sizeof(halPostAssocReqMsg.postAssocReqParams.configBssParams));
+     wpalMemoryCopy( pSendBuffer+usDataOffset + uOffset,
+                     &halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams_V1,
+                     sizeof(halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams_V1));
+  }
+  else
+#endif
+  {
+     wpalMemoryCopy( pSendBuffer+usDataOffset,
+                     &halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams,
+                     sizeof(halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams));
+
+     uOffset = sizeof(halPostAssocReqMsg.postAssocReqParams.uStaParams.configStaParams);
+
+     wpalMemoryCopy( pSendBuffer+usDataOffset + uOffset,
+                     &halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams,
+                     sizeof(halPostAssocReqMsg.postAssocReqParams.uBssParams.configBssParams));
+  }
 
 
   pWDICtx->wdiReqStatusCB     = pwdiPostAssocParams->wdiReqStatusCB;
@@ -27693,10 +27724,15 @@ WDI_PackRoamScanOffloadParams
                   pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.currAPbssid,
                   HAL_MAC_ADDR_LEN);
    pRoamCandidateListParams->ConnectedNetwork.authentication = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.authentication;
-   WDI_wdiEdTypeEncToEdTypeEnc(&pRoamCandidateListParams->ConnectedNetwork.encryption,
-                               pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.encryption);
-   WDI_wdiEdTypeEncToEdTypeEnc(&pRoamCandidateListParams->ConnectedNetwork.mcencryption,
-                               pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.mcencryption);
+   {
+       tEdType encType, mcEncType;
+       WDI_wdiEdTypeEncToEdTypeEnc(&encType,
+                                pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.encryption);
+       pRoamCandidateListParams->ConnectedNetwork.encryption = encType;
+       WDI_wdiEdTypeEncToEdTypeEnc(&mcEncType,
+                                pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.mcencryption);
+       pRoamCandidateListParams->ConnectedNetwork.mcencryption = mcEncType;
+   }
 
    pRoamCandidateListParams->ConnectedNetwork.ssId.length
                 = pwdiRoamScanOffloadReqParams->wdiRoamOffloadScanInfo.ConnectedNetwork.ssId.ucLength;
@@ -30980,7 +31016,11 @@ WDI_featureCapsExchangeReq
       gpHostWlanFeatCaps->featCaps[3]
    );
    WPAL_TRACE( eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO, "Host Capability");
-   WDI_TraceHostFWCapabilities(gpHostWlanFeatCaps->featCaps);
+   {
+       tANI_U32 tempCaps[4];
+       wpalMemoryCopy(tempCaps, gpHostWlanFeatCaps->featCaps, sizeof(tempCaps));
+       WDI_TraceHostFWCapabilities(tempCaps);
+   }
    wdiEventData.wdiRequest      = WDI_FEATURE_CAPS_EXCHANGE_REQ;
    wdiEventData.pEventData      = gpHostWlanFeatCaps; 
    wdiEventData.uEventDataSize  = fCapsStructSize; 
@@ -31149,7 +31189,11 @@ WDI_ProcessFeatureCapsExchangeRsp
    );
 
    WPAL_TRACE(  eWLAN_MODULE_DAL_CTRL,  eWLAN_PAL_TRACE_LEVEL_INFO, "Firmware Capability");
-   WDI_TraceHostFWCapabilities(gpFwWlanFeatCaps->featCaps);
+   {
+       tANI_U32 tempCaps[4];
+       wpalMemoryCopy(tempCaps, gpFwWlanFeatCaps->featCaps, sizeof(tempCaps));
+       WDI_TraceHostFWCapabilities(tempCaps);
+   }
    wdiFeatureCapsExchangeCb = (WDI_featureCapsExchangeCb) pWDICtx -> pfncRspCB; 
 
    /*Notify UMAC - there is no callback right now but can be used in future if reqd */

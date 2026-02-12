@@ -77,8 +77,8 @@ static int ghash_update(struct shash_desc *desc,
 		dctx->bytes -= n;
 		srclen -= n;
 
-		while (n--)
-			*pos++ ^= *src++;
+		crypto_xor(pos, src, n);
+		src += n;
 
 		if (!dctx->bytes)
 			gf128mul_4k_lle((be128 *)dst, ctx->gf128);

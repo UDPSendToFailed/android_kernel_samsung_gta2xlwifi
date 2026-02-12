@@ -174,8 +174,12 @@ static size_t snapshot_os(struct kgsl_device *device,
 	 * Save the last active context from global index since its more
 	 * reliable than currrent RB index
 	 */
-	kgsl_sharedmem_readl(&device->memstore, &header->current_context,
-		KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL, current_context));
+	{
+		unsigned int current_context;
+		kgsl_sharedmem_readl(&device->memstore, &current_context,
+			KGSL_MEMSTORE_OFFSET(KGSL_MEMSTORE_GLOBAL, current_context));
+		header->current_context = current_context;
+	}
 
 	context = kgsl_context_get(device, header->current_context);
 
@@ -614,7 +618,11 @@ void kgsl_device_snapshot(struct kgsl_device *device,
 	header = (struct kgsl_snapshot_header *) snapshot->ptr;
 
 	header->magic = SNAPSHOT_MAGIC;
-	header->gpuid = kgsl_gpuid(device, &header->chipid);
+	{
+		unsigned int chipid;
+		header->gpuid = kgsl_gpuid(device, &chipid);
+		header->chipid = chipid;
+	}
 
 	snapshot->ptr += sizeof(*header);
 	snapshot->remain -= sizeof(*header);

@@ -594,7 +594,6 @@ static int load_elf_binary(struct linux_binprm *bprm)
 	struct file *interpreter = NULL; /* to shut gcc up */
  	unsigned long load_addr = 0, load_bias = 0;
 	int load_addr_set = 0;
-	char elf_interpreter[PATH_MAX] __aligned(sizeof(long));
 	bool interp_present = false;
 	unsigned long error;
 	struct elf_phdr *elf_ppnt, *elf_phdata;
@@ -662,26 +661,38 @@ static int load_elf_binary(struct linux_binprm *bprm)
 			 * shared libraries - for now assume that this
 			 * is an a.out format binary
 			 */
+			char *elf_interpreter;
+
 			retval = -ENOEXEC;
 			if (elf_ppnt->p_filesz > PATH_MAX || 
 			    elf_ppnt->p_filesz < 2)
 				goto out_free_ph;
 
 			interp_present = true;
+			elf_interpreter = kmalloc(PATH_MAX, GFP_KERNEL);
+			if (!elf_interpreter) {
+				retval = -ENOMEM;
+				goto out_free_ph;
+			}
+
 			retval = kernel_read(bprm->file, elf_ppnt->p_offset,
 					     elf_interpreter,
 					     elf_ppnt->p_filesz);
 			if (retval != elf_ppnt->p_filesz) {
 				if (retval >= 0)
 					retval = -EIO;
+				kfree(elf_interpreter);
 				goto out_free_ph;
 			}
 			/* make sure path is NULL terminated */
 			retval = -ENOEXEC;
-			if (elf_interpreter[elf_ppnt->p_filesz - 1] != '\0')
+			if (elf_interpreter[elf_ppnt->p_filesz - 1] != '\0') {
+				kfree(elf_interpreter);
 				goto out_free_ph;
+			}
 
 			interpreter = open_exec(elf_interpreter);
+			kfree(elf_interpreter);
 			retval = PTR_ERR(interpreter);
 			if (IS_ERR(interpreter))
 				goto out_free_ph;

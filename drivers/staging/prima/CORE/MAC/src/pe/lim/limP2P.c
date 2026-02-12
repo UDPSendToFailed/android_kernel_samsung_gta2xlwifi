@@ -898,56 +898,60 @@ void limSetHtCaps(tpAniSirGlobal pMac, tpPESession psessionEntry, tANI_U8 *pIeSt
             pIe, dot11HtCap.supportedMCSSet[0]);
     if(pIe)
     {
-        tHtCaps *pHtcap = (tHtCaps *)&pIe[2]; //convert from unpacked to packed structure
-        pHtcap->advCodingCap = dot11HtCap.advCodingCap;
-        pHtcap->supportedChannelWidthSet = dot11HtCap.supportedChannelWidthSet;
-        pHtcap->mimoPowerSave = dot11HtCap.mimoPowerSave;
-        pHtcap->greenField = dot11HtCap.greenField;
-        pHtcap->shortGI20MHz = dot11HtCap.shortGI20MHz;
-        pHtcap->shortGI40MHz = dot11HtCap.shortGI40MHz;
-        pHtcap->txSTBC = dot11HtCap.txSTBC;
-        pHtcap->rxSTBC = dot11HtCap.rxSTBC;
-        pHtcap->delayedBA = dot11HtCap.delayedBA  ;
-        pHtcap->maximalAMSDUsize = dot11HtCap.maximalAMSDUsize;
-        pHtcap->dsssCckMode40MHz = dot11HtCap.dsssCckMode40MHz;
-        pHtcap->psmp = dot11HtCap.psmp;
-        pHtcap->stbcControlFrame = dot11HtCap.stbcControlFrame;
-        pHtcap->lsigTXOPProtection = dot11HtCap.lsigTXOPProtection;
-        pHtcap->maxRxAMPDUFactor = dot11HtCap.maxRxAMPDUFactor;
-        pHtcap->mpduDensity = dot11HtCap.mpduDensity;
-        vos_mem_copy((void *)pHtcap->supportedMCSSet,
+        tHtCaps localHtCap;
+        vos_mem_zero(&localHtCap, sizeof(tHtCaps));
+
+        localHtCap.advCodingCap = dot11HtCap.advCodingCap;
+        localHtCap.supportedChannelWidthSet = dot11HtCap.supportedChannelWidthSet;
+        localHtCap.mimoPowerSave = dot11HtCap.mimoPowerSave;
+        localHtCap.greenField = dot11HtCap.greenField;
+        localHtCap.shortGI20MHz = dot11HtCap.shortGI20MHz;
+        localHtCap.shortGI40MHz = dot11HtCap.shortGI40MHz;
+        localHtCap.txSTBC = dot11HtCap.txSTBC;
+        localHtCap.rxSTBC = dot11HtCap.rxSTBC;
+        localHtCap.delayedBA = dot11HtCap.delayedBA;
+        localHtCap.maximalAMSDUsize = dot11HtCap.maximalAMSDUsize;
+        localHtCap.dsssCckMode40MHz = dot11HtCap.dsssCckMode40MHz;
+        localHtCap.psmp = dot11HtCap.psmp;
+        localHtCap.stbcControlFrame = dot11HtCap.stbcControlFrame;
+        localHtCap.lsigTXOPProtection = dot11HtCap.lsigTXOPProtection;
+        localHtCap.maxRxAMPDUFactor = dot11HtCap.maxRxAMPDUFactor;
+        localHtCap.mpduDensity = dot11HtCap.mpduDensity;
+        vos_mem_copy((void *)localHtCap.supportedMCSSet,
                      (void *)(dot11HtCap.supportedMCSSet),
-                      sizeof(pHtcap->supportedMCSSet));
-        pHtcap->pco = dot11HtCap.pco;
-        pHtcap->transitionTime = dot11HtCap.transitionTime;
-        pHtcap->mcsFeedback = dot11HtCap.mcsFeedback;
-        pHtcap->txBF = dot11HtCap.txBF;
-        pHtcap->rxStaggeredSounding = dot11HtCap.rxStaggeredSounding;
-        pHtcap->txStaggeredSounding = dot11HtCap.txStaggeredSounding;
-        pHtcap->rxZLF = dot11HtCap.rxZLF;
-        pHtcap->txZLF = dot11HtCap.txZLF;
-        pHtcap->implicitTxBF = dot11HtCap.implicitTxBF;
-        pHtcap->calibration = dot11HtCap.calibration;
-        pHtcap->explicitCSITxBF = dot11HtCap.explicitCSITxBF;
-        pHtcap->explicitUncompressedSteeringMatrix =
+                      sizeof(localHtCap.supportedMCSSet));
+        localHtCap.pco = dot11HtCap.pco;
+        localHtCap.transitionTime = dot11HtCap.transitionTime;
+        localHtCap.mcsFeedback = dot11HtCap.mcsFeedback;
+        localHtCap.txBF = dot11HtCap.txBF;
+        localHtCap.rxStaggeredSounding = dot11HtCap.rxStaggeredSounding;
+        localHtCap.txStaggeredSounding = dot11HtCap.txStaggeredSounding;
+        localHtCap.rxZLF = dot11HtCap.rxZLF;
+        localHtCap.txZLF = dot11HtCap.txZLF;
+        localHtCap.implicitTxBF = dot11HtCap.implicitTxBF;
+        localHtCap.calibration = dot11HtCap.calibration;
+        localHtCap.explicitCSITxBF = dot11HtCap.explicitCSITxBF;
+        localHtCap.explicitUncompressedSteeringMatrix =
             dot11HtCap.explicitUncompressedSteeringMatrix;
-        pHtcap->explicitBFCSIFeedback = dot11HtCap.explicitBFCSIFeedback;
-        pHtcap->explicitUncompressedSteeringMatrixFeedback =
+        localHtCap.explicitBFCSIFeedback = dot11HtCap.explicitBFCSIFeedback;
+        localHtCap.explicitUncompressedSteeringMatrixFeedback =
             dot11HtCap.explicitUncompressedSteeringMatrixFeedback;
-        pHtcap->explicitCompressedSteeringMatrixFeedback =
+        localHtCap.explicitCompressedSteeringMatrixFeedback =
             dot11HtCap.explicitCompressedSteeringMatrixFeedback;
-        pHtcap->csiNumBFAntennae = dot11HtCap.csiNumBFAntennae;
-        pHtcap->uncompressedSteeringMatrixBFAntennae =
+        localHtCap.csiNumBFAntennae = dot11HtCap.csiNumBFAntennae;
+        localHtCap.uncompressedSteeringMatrixBFAntennae =
             dot11HtCap.uncompressedSteeringMatrixBFAntennae;
-        pHtcap->compressedSteeringMatrixBFAntennae =
+        localHtCap.compressedSteeringMatrixBFAntennae =
             dot11HtCap.compressedSteeringMatrixBFAntennae;
-        pHtcap->antennaSelection = dot11HtCap.antennaSelection;
-        pHtcap->explicitCSIFeedbackTx = dot11HtCap.explicitCSIFeedbackTx;
-        pHtcap->antennaIndicesFeedbackTx = dot11HtCap.antennaIndicesFeedbackTx;
-        pHtcap->explicitCSIFeedback = dot11HtCap.explicitCSIFeedback;
-        pHtcap->antennaIndicesFeedback = dot11HtCap.antennaIndicesFeedback;
-        pHtcap->rxAS = dot11HtCap.rxAS;
-        pHtcap->txSoundingPPDUs = dot11HtCap.txSoundingPPDUs;
+        localHtCap.antennaSelection = dot11HtCap.antennaSelection;
+        localHtCap.explicitCSIFeedbackTx = dot11HtCap.explicitCSIFeedbackTx;
+        localHtCap.antennaIndicesFeedbackTx = dot11HtCap.antennaIndicesFeedbackTx;
+        localHtCap.explicitCSIFeedback = dot11HtCap.explicitCSIFeedback;
+        localHtCap.antennaIndicesFeedback = dot11HtCap.antennaIndicesFeedback;
+        localHtCap.rxAS = dot11HtCap.rxAS;
+        localHtCap.txSoundingPPDUs = dot11HtCap.txSoundingPPDUs;
+
+        vos_mem_copy(&pIe[2], &localHtCap, sizeof(tHtCaps));
     }
 }
 

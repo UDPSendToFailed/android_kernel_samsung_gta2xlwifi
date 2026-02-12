@@ -15186,10 +15186,12 @@ wlan_hdd_is_GO_power_collapse_allowed (hdd_context_t* pHddCtx)
           return TRUE;
      }
      else
+     {
           /* wait till GO changes its interface to p2p device */
           hddLog(VOS_TRACE_LEVEL_INFO,
                  FL("Del_bss called, avoid apps suspend"));
           return FALSE;
+     }
 
 }
 /* Decide whether to allow/not the apps power collapse. 
@@ -16578,7 +16580,7 @@ static void wlan_hdd_mdns_format_response_u16(uint16_t value,
 {
     uint8_t val_u8;
 
-    if ((resp_info == NULL) || (resp_info->resp_data == NULL))
+    if (resp_info == NULL)
         return;
     val_u8 = (value & 0xff00) >> 8;
     resp_info->resp_data[resp_info->resp_len++] = val_u8;
@@ -16598,7 +16600,7 @@ static void wlan_hdd_mdns_format_response_u32(uint32_t value,
 {
     uint8_t val_u8;
 
-    if ((resp_info == NULL) || (resp_info->resp_data == NULL))
+    if (resp_info == NULL)
         return;
     val_u8 = (value & 0xff000000) >> 24;
     resp_info->resp_data[resp_info->resp_len++] = val_u8;

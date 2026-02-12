@@ -6130,7 +6130,7 @@ tSirRetStatus limSendAddBARsp( tpAniSirGlobal pMac,
   else
     return eSIR_SUCCESS;
 
-    returnAfterError:
+returnAfterError:
       // Release buffer, if allocated
       if( NULL != pAddBARspBuffer )
         palPktFree( pMac->hHdd,
@@ -6336,7 +6336,7 @@ tSirRetStatus limSendDelBAInd( tpAniSirGlobal pMac,
   else
     return eSIR_SUCCESS;
 
-    returnAfterError:
+returnAfterError:
 
       // Release buffer, if allocated
       if( NULL != pDelBAIndBuffer )
@@ -6939,8 +6939,7 @@ tSirRetStatus limSendSaQueryRequestFrame( tpAniSirGlobal pMac, tANI_U8 *transId,
             nStatus );
       // We'll fall back on the worst case scenario:
       nPayload = sizeof( tDot11fSaQueryReq );
-   }
-   else if ( DOT11F_WARNED( nStatus ) )
+   } else if ( DOT11F_WARNED( nStatus ) )
    {
       limLog( pMac, LOGW, FL("There were warnings while calculating "
                "the packed size for an SA Query Request"
@@ -6992,8 +6991,7 @@ tSirRetStatus limSendSaQueryRequestFrame( tpAniSirGlobal pMac, tANI_U8 *transId,
       // FIXME - Need to convert to tSirRetStatus
       nSirStatus = eSIR_FAILURE;
       goto returnAfterError;
-   }
-   else if ( DOT11F_WARNED( nStatus ))
+   } else if ( DOT11F_WARNED( nStatus ))
    {
       limLog( pMac, LOGW,
             FL( "There were warnings while packing SA Query Request (0x%08x)." ),
@@ -7091,8 +7089,7 @@ tSirMacAddr peer,tpPESession psessionEntry)
             nStatus );
       // We'll fall back on the worst case scenario:
       nPayload = sizeof( tDot11fSaQueryRsp );
-   }
-   else if ( DOT11F_WARNED( nStatus ) )
+   } else if ( DOT11F_WARNED( nStatus ) )
    {
       limLog( pMac, LOGW, FL("There were warnings while calculating "
                "the packed size for an SA Query Response"
@@ -7144,8 +7141,7 @@ tSirMacAddr peer,tpPESession psessionEntry)
       // FIXME - Need to convert to tSirRetStatus
       nSirStatus = eSIR_FAILURE;
       goto returnAfterError;
-   }
-   else if ( DOT11F_WARNED( nStatus ))
+   } else if ( DOT11F_WARNED( nStatus ))
    {
       limLog( pMac, LOGW,
             FL( "There were warnings while packing SA Query Response (0x%08x)." ),
@@ -7239,8 +7235,7 @@ limSendRMCActionFrame(tpAniSirGlobal  pMac,
                 nStatus );
         // We'll fall back on the worst case scenario:
         nPayload = sizeof( tDot11fRMC );
-    }
-    else if ( DOT11F_WARNED( nStatus ) )
+    } else if ( DOT11F_WARNED( nStatus ) )
     {
         limLog( pMac, LOGW, FL("There were warnings while calculating "
                                "the packed size for an RMC Action Frame"
@@ -7292,8 +7287,7 @@ limSendRMCActionFrame(tpAniSirGlobal  pMac,
         palPktFree( pMac->hHdd, HAL_TXRX_FRM_802_11_MGMT, ( void* ) pFrame,
                      ( void* ) pPacket );
         return eSIR_FAILURE;
-    }
-    else if ( DOT11F_WARNED( nStatus ) )
+    } else if ( DOT11F_WARNED( nStatus ) )
     {
         limLog( pMac, LOGW, FL("There were warnings while packing "
                                "an RMC (0x%08x)."), nStatus );

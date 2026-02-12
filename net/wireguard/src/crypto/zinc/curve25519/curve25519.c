@@ -24,7 +24,7 @@
 #elif defined(CONFIG_ZINC_ARCH_ARM)
 #include "curve25519-arm-glue.c"
 #else
-static bool *const curve25519_nobs[] __initconst = { };
+
 static void __init curve25519_fpu_init(void)
 {
 }
@@ -89,8 +89,7 @@ static int __init mod_init(void)
 {
 	if (!nosimd)
 		curve25519_fpu_init();
-	if (!selftest_run("curve25519", curve25519_selftest, curve25519_nobs,
-			  ARRAY_SIZE(curve25519_nobs)))
+	if (!selftest_run("curve25519", curve25519_selftest, NULL, 0))
 		return -ENOTRECOVERABLE;
 	return 0;
 }

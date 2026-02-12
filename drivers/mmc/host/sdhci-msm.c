@@ -4355,7 +4355,7 @@ static ssize_t mmc_summary_show(struct device *dev,
 				 card->ext_csd.device_life_time_est_typ_b)
 		       );
 		dev_info(dev, "%s", buf);
-		return sprintf(buf, "%s", buf);
+		return strlen(buf);
 	} else {
 		/* SUMMARY : No MMC Case */
 		dev_info(dev, "%s : No eMMC Card\n", __func__);

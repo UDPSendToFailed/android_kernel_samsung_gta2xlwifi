@@ -30,7 +30,7 @@
 			SUCCESS;						\
 		}								\
 		if (!--retry)							\
-			break;							\		
+			break;							\
 		cpu_relax_lowlatency();						\
 	}									\
 } while (0)

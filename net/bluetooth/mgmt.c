@@ -340,7 +340,7 @@ static int read_commands(struct sock *sk, struct hci_dev *hdev, void *data,
 	rp->num_commands = cpu_to_le16(num_commands);
 	rp->num_events = cpu_to_le16(num_events);
 
-	for (i = 0, opcode = rp->opcodes; i < num_commands; i++, opcode++)
+	for (i = 0, opcode = (__le16 *)((void *)rp + offsetof(struct mgmt_rp_read_commands, opcodes)); i < num_commands; i++, opcode++)
 		put_unaligned_le16(mgmt_commands[i], opcode);
 
 	for (i = 0; i < num_events; i++, opcode++)

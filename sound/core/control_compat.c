@@ -95,18 +95,18 @@ static int snd_ctl_elem_info_compat(struct snd_ctl_file *ctl,
 				    struct snd_ctl_elem_info32 __user *data32)
 {
 	struct snd_ctl_elem_info data;
+	struct snd_ctl_elem_info32 info32;
 	int err;
 
+	if (copy_from_user(&info32, data32, sizeof(info32)))
+		return -EFAULT;
+
 	memset(&data, 0, sizeof(data));
-	err = -EFAULT;
-	/* copy id */
-	if (copy_from_user(&data.id, &data32->id, sizeof(data.id)))
-		goto error;
+	data.id = info32.id;
 	/* we need to copy the item index.
 	 * hope this doesn't break anything..
 	 */
-	if (get_user(data.value.enumerated.item, &data32->value.enumerated.item))
-		goto error;
+	data.value.enumerated.item = info32.value.enumerated.item;
 
 	snd_power_lock(ctl->card);
 	err = snd_power_wait(ctl->card, SNDRV_CTL_POWER_D0);
@@ -115,41 +115,41 @@ static int snd_ctl_elem_info_compat(struct snd_ctl_file *ctl,
 	snd_power_unlock(ctl->card);
 
 	if (err < 0)
-		goto error;
+		return err;
+
 	/* restore info to 32bit */
-	err = -EFAULT;
-	/* id, type, access, count */
-	if (copy_to_user(&data32->id, &data.id, sizeof(data.id)) ||
-	    copy_to_user(&data32->type, &data.type, 3 * sizeof(u32)))
-		goto error;
-	if (put_user(data.owner, &data32->owner))
-		goto error;
+	info32.id = data.id;
+	info32.type = data.type;
+	info32.access = data.access;
+	info32.count = data.count;
+	info32.owner = data.owner;
 	switch (data.type) {
 	case SNDRV_CTL_ELEM_TYPE_BOOLEAN:
 	case SNDRV_CTL_ELEM_TYPE_INTEGER:
-		if (put_user(data.value.integer.min, &data32->value.integer.min) ||
-		    put_user(data.value.integer.max, &data32->value.integer.max) ||
-		    put_user(data.value.integer.step, &data32->value.integer.step))
-			goto error;
+		info32.value.integer.min = data.value.integer.min;
+		info32.value.integer.max = data.value.integer.max;
+		info32.value.integer.step = data.value.integer.step;
 		break;
 	case SNDRV_CTL_ELEM_TYPE_INTEGER64:
-		if (copy_to_user(&data32->value.integer64,
-				 &data.value.integer64,
-				 sizeof(data.value.integer64)))
-			goto error;
+		info32.value.integer64.min = data.value.integer64.min;
+		info32.value.integer64.max = data.value.integer64.max;
+		info32.value.integer64.step = data.value.integer64.step;
 		break;
 	case SNDRV_CTL_ELEM_TYPE_ENUMERATED:
-		if (copy_to_user(&data32->value.enumerated,
-				 &data.value.enumerated,
-				 sizeof(data.value.enumerated)))
-			goto error;
+		info32.value.enumerated.items = data.value.enumerated.items;
+		info32.value.enumerated.item = data.value.enumerated.item;
+		memcpy(info32.value.enumerated.name, data.value.enumerated.name,
+		       sizeof(info32.value.enumerated.name));
+		info32.value.enumerated.names_ptr = data.value.enumerated.names_ptr;
+		info32.value.enumerated.names_length = data.value.enumerated.names_length;
 		break;
 	default:
 		break;
 	}
-	err = 0;
- error:
-	return err;
+
+	if (copy_to_user(data32, &info32, sizeof(info32)))
+		return -EFAULT;
+	return 0;
 }
 
 /* read / write */
@@ -371,43 +371,44 @@ static int snd_ctl_elem_add_compat(struct snd_ctl_file *file,
 				   int replace)
 {
 	struct snd_ctl_elem_info data;
+	struct snd_ctl_elem_info32 info32;
 	int err;
 
+	if (copy_from_user(&info32, data32, sizeof(info32)))
+		return -EFAULT;
+
 	memset(&data, 0, sizeof(data));
-	err = -EFAULT;
-	/* id, type, access, count */ \
-	if (copy_from_user(&data.id, &data32->id, sizeof(data.id)) ||
-	    copy_from_user(&data.type, &data32->type, 3 * sizeof(u32)))
-		goto error;
-	if (get_user(data.owner, &data32->owner))
-		goto error;
+	data.id = info32.id;
+	data.type = info32.type;
+	data.access = info32.access;
+	data.count = info32.count;
+	data.owner = info32.owner;
+
 	switch (data.type) {
 	case SNDRV_CTL_ELEM_TYPE_BOOLEAN:
 	case SNDRV_CTL_ELEM_TYPE_INTEGER:
-		if (get_user(data.value.integer.min, &data32->value.integer.min) ||
-		    get_user(data.value.integer.max, &data32->value.integer.max) ||
-		    get_user(data.value.integer.step, &data32->value.integer.step))
-			goto error;
+		data.value.integer.min = info32.value.integer.min;
+		data.value.integer.max = info32.value.integer.max;
+		data.value.integer.step = info32.value.integer.step;
 		break;
 	case SNDRV_CTL_ELEM_TYPE_INTEGER64:
-		if (copy_from_user(&data.value.integer64,
-				   &data32->value.integer64,
-				   sizeof(data.value.integer64)))
-			goto error;
+		data.value.integer64.min = info32.value.integer64.min;
+		data.value.integer64.max = info32.value.integer64.max;
+		data.value.integer64.step = info32.value.integer64.step;
 		break;
 	case SNDRV_CTL_ELEM_TYPE_ENUMERATED:
-		if (copy_from_user(&data.value.enumerated,
-				   &data32->value.enumerated,
-				   sizeof(data.value.enumerated)))
-			goto error;
+		data.value.enumerated.items = info32.value.enumerated.items;
+		data.value.enumerated.item = info32.value.enumerated.item;
+		memcpy(data.value.enumerated.name, info32.value.enumerated.name,
+		       sizeof(data.value.enumerated.name));
 		data.value.enumerated.names_ptr =
-			(uintptr_t)compat_ptr(data.value.enumerated.names_ptr);
+			(uintptr_t)compat_ptr(info32.value.enumerated.names_ptr);
+		data.value.enumerated.names_length = info32.value.enumerated.names_length;
 		break;
 	default:
 		break;
 	}
 	err = snd_ctl_elem_add(file, &data, replace);
- error:
 	return err;
 }  
 

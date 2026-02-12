@@ -176,7 +176,7 @@
 			deg_lambda = i;
 	}
 	/* Find roots of error+erasure locator polynomial by Chien search */
-	memcpy(&reg[1], &lambda[1], nroots * sizeof(reg[0]));
+	memcpy(&reg[1], &lambda[1], (unsigned int)nroots * sizeof(reg[0]));
 	count = 0;		/* Number of roots of lambda(x) */
 	for (i = 1, k = iprim - 1; i <= nn; i++, k = rs_modnn(rs, k + iprim)) {
 		q = 1;		/* lambda[0] is always 0 */

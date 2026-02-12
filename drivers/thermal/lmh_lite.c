@@ -298,7 +298,7 @@ static void lmh_update(struct lmh_driver_data *lmh_dat,
 		lmh_sensor->last_read_value);
 }
 
-static void lmh_read_and_update(struct lmh_driver_data *lmh_dat)
+static void __maybe_unused lmh_read_and_update(struct lmh_driver_data *lmh_dat)
 {
 	int ret = 0, idx = 0;
 	struct lmh_sensor_data *lmh_sensor = NULL;

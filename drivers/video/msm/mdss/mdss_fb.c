@@ -4673,7 +4673,8 @@ static int mdss_fb_atomic_commit_ioctl(struct fb_info *info,
 	int ret, i = 0, j = 0, rc;
 	struct mdp_layer_commit  commit;
 	u32 buffer_size, layer_count;
-	struct mdp_input_layer *layer, layer_list[MAX_LAYER_COUNT];
+	struct mdp_input_layer *layer;
+	struct mdp_input_layer *layer_list = NULL;
 	struct mdp_input_layer __user *input_layer_list;
 	struct mdp_output_layer output_layer;
 	struct mdp_output_layer __user *output_layer_user;
@@ -4715,6 +4716,13 @@ static int mdss_fb_atomic_commit_ioctl(struct fb_info *info,
 		ret = -EINVAL;
 		goto err;
 	} else if (layer_count) {
+		layer_list = kcalloc(layer_count, sizeof(struct mdp_input_layer),
+				     GFP_KERNEL);
+		if (!layer_list) {
+			ret = -ENOMEM;
+			goto err;
+		}
+
 		buffer_size = sizeof(struct mdp_input_layer) * layer_count;
 		ret = copy_from_user(layer_list, input_layer_list, buffer_size);
 		if (ret) {
@@ -4804,6 +4812,7 @@ err:
 		layer_list[i].scale = NULL;
 		mdss_mdp_free_layer_pp_info(&layer_list[i]);
 	}
+	kfree(layer_list);
 
 	return ret;
 }

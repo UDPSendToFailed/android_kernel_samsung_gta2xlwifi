@@ -1019,6 +1019,11 @@ void msm_isp_notify(struct vfe_device *vfe_dev, uint32_t event_type,
 
 	memset(&event_data, 0, sizeof(event_data));
 
+	if (frame_src >= VFE_SRC_MAX) {
+		pr_err("%s: Invalid frame_src %d\n", __func__, frame_src);
+		return;
+	}
+
 	switch (event_type) {
 	case ISP_EVENT_SOF:
 		for (i = 0; i < VFE_AXI_SRC_MAX; i++) {
@@ -3680,13 +3685,14 @@ static int msm_isp_request_frame(struct vfe_device *vfe_dev,
 	}
 
 	rc = msm_isp_calculate_framedrop(&vfe_dev->axi_data, &stream_cfg_cmd);
-	if (0 == rc)
+	if (0 == rc) {
 		msm_isp_reset_framedrop(vfe_dev, stream_info);
 		trace_printk("%d: DONE vfe: %d req_frmid: %d  cur_frmid: %d und_req_cnt %d pipobit: %d Swpipobit: %d pibuf: %p poBuf: %p\n",
 			__LINE__, vfe_dev->pdev->id, frame_id, vfe_dev->axi_data.src_info[VFE_PIX_0].frame_id,
 			stream_info->undelivered_request_cnt,
 			((pingpong_status >> stream_info->wm[0]) & 0x1),
 			stream_info->sw_sof_ping_pong_bit, stream_info->buf[0], stream_info->buf[1]);
+	}
 
 	spin_unlock_irqrestore(&stream_info->lock, flags);
 

@@ -378,8 +378,8 @@ static int net1080_rx_fixup(struct usbnet *dev, struct sk_buff *skb)
 	}
 
 	header = (struct nc_header *) skb->data;
-	hdr_len = le16_to_cpup(&header->hdr_len);
-	packet_len = le16_to_cpup(&header->packet_len);
+	hdr_len = le16_to_cpu(header->hdr_len);
+	packet_len = le16_to_cpu(header->packet_len);
 	if (FRAMED_SIZE(packet_len) > NC_MAX_PACKET) {
 		dev->net->stats.rx_frame_errors++;
 		netdev_dbg(dev->net, "packet too big, %d\n", packet_len);

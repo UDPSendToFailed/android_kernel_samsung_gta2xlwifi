@@ -810,7 +810,6 @@ void input_event(struct input_dev *dev,
 		 unsigned int type, unsigned int code, int value)
 {
 	unsigned long flags;
-	int idx;
 
 	if (is_event_supported(type, dev->evbit, EV_MAX)) {
 
@@ -825,6 +824,7 @@ void input_event(struct input_dev *dev,
 				input_booster(dev);
 				input_count=0;
 			} else if (input_count < MAX_EVENTS) {
+				int idx;
 				pr_debug("[Input Booster1] type = %x, code = %x, value =%x\n", type, code, value);
 				idx = input_count;
 				input_events[idx].type = type;

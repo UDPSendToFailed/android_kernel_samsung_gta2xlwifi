@@ -4083,9 +4083,14 @@ static int msm_dai_tdm_q6_probe(struct platform_device *pdev)
 	int group_idx = 0;
 
 	/* extract tdm group info into static */
-	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,msm-cpudai-tdm-group-id",
-		(u32 *)&tdm_group_cfg.group_id);
+	/* extract tdm group info into static */
+	{
+		u32 val = 0;
+		rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,msm-cpudai-tdm-group-id",
+			&val);
+		tdm_group_cfg.group_id = (u16)val;
+	}
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Group ID from DT file %s\n",
 			__func__, "qcom,msm-cpudai-tdm-group-id");
@@ -7182,9 +7187,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 	memset(dai_data, 0, sizeof(*dai_data));
 
 	/* TDM CFG */
-	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,msm-cpudai-tdm-sync-mode",
-		(u32 *)&dai_data->port_cfg.tdm.sync_mode);
+	{
+		u32 val = 0;
+		rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,msm-cpudai-tdm-sync-mode",
+			&val);
+		dai_data->port_cfg.tdm.sync_mode = (u16)val;
+	}
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Sync Mode from DT file %s\n",
 			__func__, "qcom,msm-cpudai-tdm-sync-mode");
@@ -7193,9 +7202,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s: Sync Mode from DT file 0x%x\n",
 		__func__, dai_data->port_cfg.tdm.sync_mode);
 
-	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,msm-cpudai-tdm-sync-src",
-		(u32 *)&dai_data->port_cfg.tdm.sync_src);
+	{
+		u32 val = 0;
+		rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,msm-cpudai-tdm-sync-src",
+			&val);
+		dai_data->port_cfg.tdm.sync_src = (u16)val;
+	}
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Sync Src from DT file %s\n",
 			__func__, "qcom,msm-cpudai-tdm-sync-src");
@@ -7204,9 +7217,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s: Sync Src from DT file 0x%x\n",
 		__func__, dai_data->port_cfg.tdm.sync_src);
 
-	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,msm-cpudai-tdm-data-out",
-		(u32 *)&dai_data->port_cfg.tdm.ctrl_data_out_enable);
+	{
+		u32 val = 0;
+		rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,msm-cpudai-tdm-data-out",
+			&val);
+		dai_data->port_cfg.tdm.ctrl_data_out_enable = (u16)val;
+	}
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Data Out from DT file %s\n",
 			__func__, "qcom,msm-cpudai-tdm-data-out");
@@ -7215,9 +7232,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s: Data Out from DT file 0x%x\n",
 		__func__, dai_data->port_cfg.tdm.ctrl_data_out_enable);
 
-	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,msm-cpudai-tdm-invert-sync",
-		(u32 *)&dai_data->port_cfg.tdm.ctrl_invert_sync_pulse);
+	{
+		u32 val = 0;
+		rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,msm-cpudai-tdm-invert-sync",
+			&val);
+		dai_data->port_cfg.tdm.ctrl_invert_sync_pulse = (u16)val;
+	}
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Invert Sync from DT file %s\n",
 			__func__, "qcom,msm-cpudai-tdm-invert-sync");
@@ -7226,9 +7247,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "%s: Invert Sync from DT file 0x%x\n",
 		__func__, dai_data->port_cfg.tdm.ctrl_invert_sync_pulse);
 
-	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,msm-cpudai-tdm-data-delay",
-		(u32 *)&dai_data->port_cfg.tdm.ctrl_sync_data_delay);
+	{
+		u32 val = 0;
+		rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,msm-cpudai-tdm-data-delay",
+			&val);
+		dai_data->port_cfg.tdm.ctrl_sync_data_delay = (u16)val;
+	}
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Data Delay from DT file %s\n",
 			__func__, "qcom,msm-cpudai-tdm-data-delay");
@@ -7243,9 +7268,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 		AFE_API_VERSION_TDM_CONFIG;
 
 	/* TDM SLOT MAPPING CFG */
-	rc = of_property_read_u32(pdev->dev.of_node,
-		"qcom,msm-cpudai-tdm-data-align",
-		&dai_data->port_cfg.slot_mapping.data_align_type);
+	{
+		u32 val = 0;
+		rc = of_property_read_u32(pdev->dev.of_node,
+			"qcom,msm-cpudai-tdm-data-align",
+			&val);
+		dai_data->port_cfg.slot_mapping.data_align_type = (u16)val;
+	}
 	if (rc) {
 		dev_err(&pdev->dev, "%s: Data Align from DT file %s\n",
 			__func__,
@@ -7268,9 +7297,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 		of_find_property(pdev->dev.of_node,
 			"qcom,msm-cpudai-tdm-header-num-frame-repeat", NULL)) {
 		/* if the property exist */
-		rc = of_property_read_u32(pdev->dev.of_node,
-			"qcom,msm-cpudai-tdm-header-start-offset",
-			(u32 *)&custom_tdm_header->start_offset);
+		{
+			u32 val = 0;
+			rc = of_property_read_u32(pdev->dev.of_node,
+				"qcom,msm-cpudai-tdm-header-start-offset",
+				&val);
+			custom_tdm_header->start_offset = (u16)val;
+		}
 		if (rc) {
 			dev_err(&pdev->dev, "%s: Header Start Offset from DT file %s\n",
 				__func__,
@@ -7280,9 +7313,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "%s: Header Start Offset from DT file 0x%x\n",
 			__func__, custom_tdm_header->start_offset);
 
-		rc = of_property_read_u32(pdev->dev.of_node,
-			"qcom,msm-cpudai-tdm-header-width",
-			(u32 *)&custom_tdm_header->header_width);
+		{
+			u32 val = 0;
+			rc = of_property_read_u32(pdev->dev.of_node,
+				"qcom,msm-cpudai-tdm-header-width",
+				&val);
+			custom_tdm_header->header_width = (u16)val;
+		}
 		if (rc) {
 			dev_err(&pdev->dev, "%s: Header Width from DT file %s\n",
 				__func__, "qcom,msm-cpudai-tdm-header-width");
@@ -7291,9 +7328,13 @@ static int msm_dai_q6_tdm_dev_probe(struct platform_device *pdev)
 		dev_dbg(&pdev->dev, "%s: Header Width from DT file 0x%x\n",
 			__func__, custom_tdm_header->header_width);
 
-		rc = of_property_read_u32(pdev->dev.of_node,
-			"qcom,msm-cpudai-tdm-header-num-frame-repeat",
-			(u32 *)&custom_tdm_header->num_frame_repeat);
+		{
+			u32 val = 0;
+			rc = of_property_read_u32(pdev->dev.of_node,
+				"qcom,msm-cpudai-tdm-header-num-frame-repeat",
+				&val);
+			custom_tdm_header->num_frame_repeat = (u16)val;
+		}
 		if (rc) {
 			dev_err(&pdev->dev, "%s: Header Num Frame Repeat from DT file %s\n",
 				__func__,

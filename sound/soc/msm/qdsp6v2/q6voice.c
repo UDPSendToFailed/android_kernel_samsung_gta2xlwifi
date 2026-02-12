@@ -699,7 +699,7 @@ err:
 static int voice_send_mvm_cvd_version_cmd(struct voice_data *v)
 {
 	int ret;
-	struct apr_hdr cvd_version_get_cmd;
+	struct apr_hdr cvd_version_get_cmd __attribute__((aligned(4)));
 	void *apr_mvm;
 
 	if (v == NULL) {
@@ -780,7 +780,7 @@ done:
 static int voice_send_dual_control_cmd(struct voice_data *v)
 {
 	int ret = 0;
-	struct mvm_modem_dual_control_session_cmd mvm_voice_ctl_cmd;
+	struct mvm_modem_dual_control_session_cmd mvm_voice_ctl_cmd __attribute__((aligned(4)));
 	void *apr_mvm;
 	u16 mvm_handle;
 
@@ -849,10 +849,10 @@ fail:
 static int voice_create_mvm_cvs_session(struct voice_data *v)
 {
 	int ret = 0;
-	struct mvm_create_ctl_session_cmd mvm_session_cmd;
-	struct cvs_create_passive_ctl_session_cmd cvs_session_cmd;
-	struct cvs_create_full_ctl_session_cmd cvs_full_ctl_cmd;
-	struct mvm_attach_stream_cmd attach_stream_cmd;
+	struct mvm_create_ctl_session_cmd mvm_session_cmd __attribute__((aligned(4)));
+	struct cvs_create_passive_ctl_session_cmd cvs_session_cmd __attribute__((aligned(4)));
+	struct cvs_create_full_ctl_session_cmd cvs_full_ctl_cmd __attribute__((aligned(4)));
+	struct mvm_attach_stream_cmd attach_stream_cmd __attribute__((aligned(4)));
 	void *apr_mvm, *apr_cvs, *apr_cvp;
 	u16 mvm_handle, cvs_handle, cvp_handle;
 
@@ -1234,9 +1234,9 @@ done:
 static int voice_destroy_mvm_cvs_session(struct voice_data *v)
 {
 	int ret = 0;
-	struct mvm_detach_stream_cmd detach_stream;
-	struct apr_hdr mvm_destroy;
-	struct apr_hdr cvs_destroy;
+	struct mvm_detach_stream_cmd detach_stream __attribute__((aligned(4)));
+	struct apr_hdr mvm_destroy __attribute__((aligned(4)));
+	struct apr_hdr cvs_destroy __attribute__((aligned(4)));
 	void *apr_mvm, *apr_cvs;
 	u16 mvm_handle, cvs_handle;
 
@@ -1429,7 +1429,7 @@ fail:
 static int voice_send_tty_mode_cmd(struct voice_data *v)
 {
 	int ret = 0;
-	struct mvm_set_tty_mode_cmd mvm_tty_mode_cmd;
+	struct mvm_set_tty_mode_cmd mvm_tty_mode_cmd __attribute__((aligned(4)));
 	void *apr_mvm;
 	u16 mvm_handle;
 
@@ -1494,7 +1494,7 @@ fail:
 static int voice_send_set_pp_enable_cmd(struct voice_data *v,
 					uint32_t module_id, int enable)
 {
-	struct cvs_set_pp_enable_cmd cvs_set_pp_cmd;
+	struct cvs_set_pp_enable_cmd cvs_set_pp_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
@@ -1560,7 +1560,7 @@ fail:
 
 static int voice_send_hd_cmd(struct voice_data *v, int enable)
 {
-	struct mvm_set_hd_enable_cmd mvm_set_hd_cmd;
+	struct mvm_set_hd_enable_cmd mvm_set_hd_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_mvm;
 	u16 mvm_handle;
@@ -1643,7 +1643,7 @@ static int voice_set_dtx(struct voice_data *v)
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
-	struct cvs_set_enc_dtx_mode_cmd cvs_set_dtx;
+	struct cvs_set_enc_dtx_mode_cmd cvs_set_dtx __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -1703,7 +1703,7 @@ static int voice_set_dtx(struct voice_data *v)
 
 static int voice_send_mvm_media_type_cmd(struct voice_data *v)
 {
-	struct vss_imvm_cmd_set_cal_media_type_t mvm_set_cal_media_type;
+	struct vss_imvm_cmd_set_cal_media_type_t mvm_set_cal_media_type __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_mvm;
 	u16 mvm_handle;
@@ -1770,7 +1770,7 @@ static int voice_send_dtmf_rx_detection_cmd(struct voice_data *v,
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
-	struct cvs_set_rx_dtmf_detection_cmd cvs_dtmf_rx_detection;
+	struct cvs_set_rx_dtmf_detection_cmd cvs_dtmf_rx_detection __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -1838,7 +1838,7 @@ static int voc_snd_dtmf_mute_tx_detect_cmd(struct voice_data *v,
 	int ret = 0;
 	void *apr_cvp;
 	u16 cvp_handle;
-	struct cvp_set_tx_dtmf_mute_detection_cmd cvp_tx_dtmf_mute_detection;
+	struct cvp_set_tx_dtmf_mute_detection_cmd cvp_tx_dtmf_mute_detection __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2140,7 +2140,7 @@ static int voice_config_cvs_vocoder_amr_rate(struct voice_data *v)
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
-	struct cvs_set_amr_enc_rate_cmd cvs_set_amr_rate;
+	struct cvs_set_amr_enc_rate_cmd cvs_set_amr_rate __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2221,7 +2221,7 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 	void *apr_cvs;
 	u16 cvs_handle;
 	/* Set media type. */
-	struct cvs_set_media_type_cmd cvs_set_media_cmd;
+	struct cvs_set_media_type_cmd cvs_set_media_cmd __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2282,7 +2282,7 @@ static int voice_config_cvs_vocoder(struct voice_data *v)
 	case VSS_MEDIA_ID_4GV_NB_MODEM:
 	case VSS_MEDIA_ID_4GV_WB_MODEM:
 	case VSS_MEDIA_ID_4GV_NW_MODEM: {
-		struct cvs_set_cdma_enc_minmax_rate_cmd cvs_set_cdma_rate;
+		struct cvs_set_cdma_enc_minmax_rate_cmd cvs_set_cdma_rate __attribute__((aligned(4)));
 
 		pr_debug("Setting EVRC min-max rate\n");
 
@@ -2397,7 +2397,7 @@ done:
 
 static int voice_send_start_voice_cmd(struct voice_data *v)
 {
-	struct apr_hdr mvm_start_voice_cmd;
+	struct apr_hdr mvm_start_voice_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_mvm;
 	u16 mvm_handle;
@@ -2483,10 +2483,12 @@ static void voc_get_tx_rx_topology(struct voice_data *v,
 
 static int voice_send_set_device_cmd(struct voice_data *v)
 {
-	struct cvp_set_device_cmd  cvp_setdev_cmd;
+	struct cvp_set_device_cmd  cvp_setdev_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_cvp;
 	u16 cvp_handle;
+	uint32_t tx_id = 0;
+	uint32_t rx_id = 0;
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -2513,6 +2515,7 @@ static int voice_send_set_device_cmd(struct voice_data *v)
 	cvp_setdev_cmd.hdr.dest_port = cvp_handle;
 	cvp_setdev_cmd.hdr.token = 0;
 
+
 	if (voice_get_cvd_int_version(common.cvd_version) >=
 	    CVD_INT_VERSION_2_2)
 		cvp_setdev_cmd.hdr.opcode =
@@ -2521,9 +2524,9 @@ static int voice_send_set_device_cmd(struct voice_data *v)
 		cvp_setdev_cmd.hdr.opcode =
 				VSS_IVOCPROC_CMD_SET_DEVICE_V2;
 
-	voc_get_tx_rx_topology(v,
-			&cvp_setdev_cmd.cvp_set_device_v2.tx_topology_id,
-			&cvp_setdev_cmd.cvp_set_device_v2.rx_topology_id);
+	voc_get_tx_rx_topology(v, &tx_id, &rx_id);
+	cvp_setdev_cmd.cvp_set_device_v2.tx_topology_id = tx_id;
+	cvp_setdev_cmd.cvp_set_device_v2.rx_topology_id = rx_id;
 
 	cvp_setdev_cmd.cvp_set_device_v2.tx_port_id = v->dev_tx.port_id;
 	cvp_setdev_cmd.cvp_set_device_v2.rx_port_id = v->dev_rx.port_id;
@@ -2575,7 +2578,7 @@ fail:
 
 static int voice_send_stop_voice_cmd(struct voice_data *v)
 {
-	struct apr_hdr mvm_stop_voice_cmd;
+	struct apr_hdr mvm_stop_voice_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_mvm;
 	u16 mvm_handle;
@@ -2675,7 +2678,7 @@ done:
 
 static int voice_send_cvs_register_cal_cmd(struct voice_data *v)
 {
-	struct cvs_register_cal_data_cmd cvs_reg_cal_cmd;
+	struct cvs_register_cal_data_cmd cvs_reg_cal_cmd __attribute__((aligned(4)));
 	struct cal_block_data *cal_block = NULL;
 	struct cal_block_data *col_data = NULL;
 	int ret = 0;
@@ -2771,7 +2774,7 @@ done:
 
 static int voice_send_cvs_deregister_cal_cmd(struct voice_data *v)
 {
-	struct cvs_deregister_cal_data_cmd cvs_dereg_cal_cmd;
+	struct cvs_deregister_cal_data_cmd cvs_dereg_cal_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	memset(&cvs_dereg_cal_cmd, 0, sizeof(cvs_dereg_cal_cmd));
 
@@ -2834,7 +2837,7 @@ done:
 
 static int voice_send_cvp_create_cmd(struct voice_data *v)
 {
-	struct cvp_create_full_ctl_session_cmd cvp_session_cmd;
+	struct cvp_create_full_ctl_session_cmd cvp_session_cmd __attribute__((aligned(4)));
 	void *apr_cvp;
 	int ret = 0;
 
@@ -2873,9 +2876,14 @@ static int voice_send_cvp_create_cmd(struct voice_data *v)
 		cvp_session_cmd.hdr.opcode =
 				VSS_IVOCPROC_CMD_CREATE_FULL_CONTROL_SESSION_V2;
 
-	voc_get_tx_rx_topology(v,
-			&cvp_session_cmd.cvp_session.tx_topology_id,
-			&cvp_session_cmd.cvp_session.rx_topology_id);
+	{
+		uint32_t tx_id = 0;
+		uint32_t rx_id = 0;
+
+		voc_get_tx_rx_topology(v, &tx_id, &rx_id);
+		cvp_session_cmd.cvp_session.tx_topology_id = tx_id;
+		cvp_session_cmd.cvp_session.rx_topology_id = rx_id;
+	}
 
 	cvp_session_cmd.cvp_session.direction = 2; /*tx and rx*/
 	cvp_session_cmd.cvp_session.tx_port_id = v->dev_tx.port_id;
@@ -2938,7 +2946,7 @@ done:
 
 static int voice_send_cvp_register_dev_cfg_cmd(struct voice_data *v)
 {
-	struct cvp_register_dev_cfg_cmd cvp_reg_dev_cfg_cmd;
+	struct cvp_register_dev_cfg_cmd cvp_reg_dev_cfg_cmd __attribute__((aligned(4)));
 	struct cal_block_data *cal_block = NULL;
 	int ret = 0;
 	memset(&cvp_reg_dev_cfg_cmd, 0, sizeof(cvp_reg_dev_cfg_cmd));
@@ -3024,7 +3032,7 @@ done:
 
 static int voice_send_cvp_deregister_dev_cfg_cmd(struct voice_data *v)
 {
-	struct cvp_deregister_dev_cfg_cmd cvp_dereg_dev_cfg_cmd;
+	struct cvp_deregister_dev_cfg_cmd cvp_dereg_dev_cfg_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	memset(&cvp_dereg_dev_cfg_cmd, 0, sizeof(cvp_dereg_dev_cfg_cmd));
 
@@ -3085,7 +3093,7 @@ done:
 
 static int voice_send_cvp_register_cal_cmd(struct voice_data *v)
 {
-	struct cvp_register_cal_data_cmd cvp_reg_cal_cmd;
+	struct cvp_register_cal_data_cmd cvp_reg_cal_cmd __attribute__((aligned(4)));
 	struct cal_block_data *cal_block = NULL;
 	struct cal_block_data *col_data = NULL;
 	int ret = 0;
@@ -3189,7 +3197,7 @@ done:
 
 static int voice_send_cvp_deregister_cal_cmd(struct voice_data *v)
 {
-	struct cvp_deregister_cal_data_cmd cvp_dereg_cal_cmd;
+	struct cvp_deregister_cal_data_cmd cvp_dereg_cal_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	memset(&cvp_dereg_cal_cmd, 0, sizeof(cvp_dereg_cal_cmd));
 
@@ -3251,7 +3259,7 @@ done:
 
 static int voice_send_cvp_register_vol_cal_cmd(struct voice_data *v)
 {
-	struct cvp_register_vol_cal_data_cmd cvp_reg_vol_cal_cmd;
+	struct cvp_register_vol_cal_data_cmd cvp_reg_vol_cal_cmd __attribute__((aligned(4)));
 	struct cal_block_data *cal_block = NULL;
 	struct cal_block_data *col_data = NULL;
 	int ret = 0;
@@ -3348,7 +3356,7 @@ done:
 
 static int voice_send_cvp_deregister_vol_cal_cmd(struct voice_data *v)
 {
-	struct cvp_deregister_vol_cal_data_cmd cvp_dereg_vol_cal_cmd;
+	struct cvp_deregister_vol_cal_data_cmd cvp_dereg_vol_cal_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	memset(&cvp_dereg_vol_cal_cmd, 0, sizeof(cvp_dereg_vol_cal_cmd));
 
@@ -3417,7 +3425,7 @@ static int voice_map_memory_physical_cmd(struct voice_data *v,
 					 uint32_t size,
 					 uint32_t token)
 {
-	struct vss_imemory_cmd_map_physical_t mvm_map_phys_cmd;
+	struct vss_imemory_cmd_map_physical_t mvm_map_phys_cmd __attribute__((aligned(4)));
 	uint32_t *memtable;
 	int ret = 0;
 
@@ -3523,7 +3531,7 @@ fail:
 #ifdef CONFIG_SEC_VOC_SOLUTION
 static int send_packet_loopback_cmd(struct voice_data *v, int mode)
 {
-	struct cvs_set_loopback_enable_cmd cvs_set_loopback_cmd;
+	struct cvs_set_loopback_enable_cmd cvs_set_loopback_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
@@ -3583,7 +3591,7 @@ fail:
 
 static int voice_pause_voice_call(struct voice_data *v)
 {
-	struct apr_hdr	mvm_pause_voice_cmd;
+	struct apr_hdr	mvm_pause_voice_cmd __attribute__((aligned(4)));
 	void		*apr_mvm;
 	int		ret = 0;
 
@@ -4102,7 +4110,7 @@ fail:
 static int voice_send_cvp_device_channels_cmd(struct voice_data *v)
 {
 	int ret = 0;
-	struct  cvp_set_dev_channels_cmd cvp_set_dev_channels_cmd;
+	struct  cvp_set_dev_channels_cmd cvp_set_dev_channels_cmd __attribute__((aligned(4)));
 	void *apr_cvp;
 	u16 cvp_handle;
 
@@ -4183,7 +4191,7 @@ done:
 static int voice_send_cvp_topology_commit_cmd(struct voice_data *v)
 {
 	int ret = 0;
-	struct apr_hdr cvp_topology_commit_cmd;
+	struct apr_hdr cvp_topology_commit_cmd __attribute__((aligned(4)));
 	void *apr_cvp;
 	u16 cvp_handle;
 
@@ -4257,7 +4265,7 @@ done:
 static int voice_send_enable_vocproc_cmd(struct voice_data *v)
 {
 	int ret = 0;
-	struct apr_hdr cvp_enable_cmd;
+	struct apr_hdr cvp_enable_cmd __attribute__((aligned(4)));
 	void *apr_cvp;
 	u16 cvp_handle;
 
@@ -4317,7 +4325,7 @@ fail:
 
 static int voice_send_mvm_cal_network_cmd(struct voice_data *v)
 {
-	struct vss_imvm_cmd_set_cal_network_t mvm_set_cal_network;
+	struct vss_imvm_cmd_set_cal_network_t mvm_set_cal_network __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_mvm;
 	u16 mvm_handle;
@@ -4379,8 +4387,8 @@ static int voice_send_netid_timing_cmd(struct voice_data *v)
 	int ret = 0;
 	void *apr_mvm;
 	u16 mvm_handle;
-	struct mvm_set_network_cmd mvm_set_network;
-	struct mvm_set_voice_timing_cmd mvm_set_voice_timing;
+	struct mvm_set_network_cmd mvm_set_network __attribute__((aligned(4)));
+	struct mvm_set_voice_timing_cmd mvm_set_voice_timing __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -4491,7 +4499,7 @@ fail:
 static int voice_send_attach_vocproc_cmd(struct voice_data *v)
 {
 	int ret = 0;
-	struct mvm_attach_vocproc_cmd mvm_a_vocproc_cmd;
+	struct mvm_attach_vocproc_cmd mvm_a_vocproc_cmd __attribute__((aligned(4)));
 	void *apr_mvm;
 	u16 mvm_handle, cvp_handle;
 
@@ -4568,8 +4576,8 @@ static void voc_update_session_params(struct voice_data *v)
 
 static int voice_destroy_vocproc(struct voice_data *v)
 {
-	struct mvm_detach_vocproc_cmd mvm_d_vocproc_cmd;
-	struct apr_hdr cvp_destroy_session_cmd;
+	struct mvm_detach_vocproc_cmd mvm_d_vocproc_cmd __attribute__((aligned(4)));
+	struct apr_hdr cvp_destroy_session_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_mvm, *apr_cvp;
 	u16 mvm_handle, cvp_handle;
@@ -4717,7 +4725,7 @@ fail:
 static int voice_send_mvm_unmap_memory_physical_cmd(struct voice_data *v,
 						    uint32_t mem_handle)
 {
-	struct vss_imemory_cmd_unmap_t mem_unmap;
+	struct vss_imemory_cmd_unmap_t mem_unmap __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_mvm;
 	u16 mvm_handle;
@@ -4781,7 +4789,7 @@ fail:
 static int voice_send_cvs_packet_exchange_config_cmd(struct voice_data *v)
 {
 	struct vss_istream_cmd_set_oob_packet_exchange_config_t
-						 packet_exchange_config_pkt;
+						 packet_exchange_config_pkt __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
@@ -4867,7 +4875,7 @@ fail:
 
 static int voice_send_cvs_data_exchange_mode_cmd(struct voice_data *v)
 {
-	struct vss_istream_cmd_set_packet_exchange_mode_t data_exchange_pkt;
+	struct vss_istream_cmd_set_packet_exchange_mode_t data_exchange_pkt __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
@@ -4926,7 +4934,7 @@ fail:
 static int voice_send_stream_mute_cmd(struct voice_data *v, uint16_t direction,
 				     uint16_t mute_flag, uint32_t ramp_duration)
 {
-	struct cvs_set_mute_cmd cvs_mute_cmd;
+	struct cvs_set_mute_cmd cvs_mute_cmd __attribute__((aligned(4)));
 	int ret = 0;
 
 	if (v == NULL) {
@@ -4989,7 +4997,7 @@ fail:
 static int voice_send_device_mute_cmd(struct voice_data *v, uint16_t direction,
 				     uint16_t mute_flag, uint32_t ramp_duration)
 {
-	struct cvp_set_mute_cmd cvp_mute_cmd;
+	struct cvp_set_mute_cmd cvp_mute_cmd __attribute__((aligned(4)));
 	int ret = 0;
 
 	if (v == NULL) {
@@ -5050,7 +5058,7 @@ fail:
 
 static int voice_send_vol_step_cmd(struct voice_data *v)
 {
-	struct cvp_set_rx_volume_step_cmd cvp_vol_step_cmd;
+	struct cvp_set_rx_volume_step_cmd cvp_vol_step_cmd __attribute__((aligned(4)));
 	int ret = 0;
 	void *apr_cvp;
 	u16 cvp_handle;
@@ -5117,7 +5125,7 @@ static int voice_cvs_start_record(struct voice_data *v, uint32_t rec_mode)
 	void *apr_cvs;
 	u16 cvs_handle;
 
-	struct cvs_start_record_cmd cvs_start_record;
+	struct cvs_start_record_cmd cvs_start_record __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);
@@ -5214,7 +5222,7 @@ static int voice_cvs_stop_record(struct voice_data *v)
 	int ret = 0;
 	void *apr_cvs;
 	u16 cvs_handle;
-	struct apr_hdr cvs_stop_record;
+	struct apr_hdr cvs_stop_record __attribute__((aligned(4)));
 
 	if (v == NULL) {
 		pr_err("%s: v is NULL\n", __func__);

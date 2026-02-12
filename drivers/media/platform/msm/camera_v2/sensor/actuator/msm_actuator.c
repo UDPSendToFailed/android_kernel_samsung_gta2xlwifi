@@ -600,7 +600,6 @@ static int32_t msm_actuator_move_focus(
 	int16_t dest_step_pos = move_params->dest_step_pos;
 	uint16_t curr_lens_pos = 0;
 	int dir = move_params->dir;
-	int32_t num_steps = move_params->num_steps;
 	struct msm_camera_i2c_reg_setting reg_setting;
 
     if (a_ctrl->manual_focus) {
@@ -608,7 +607,7 @@ static int32_t msm_actuator_move_focus(
         return 0;
     }
 
-	CDBG("called, dir %d, num_steps %d\n", dir, num_steps);
+	CDBG("called, dir %d, num_steps %d\n", dir, move_params->num_steps);
 
 	if ((dest_step_pos == a_ctrl->curr_step_pos) ||
 		((dest_step_pos <= a_ctrl->total_steps) &&
@@ -898,14 +897,14 @@ static int32_t msm_actuator_bivcm_move_focus(
 	int16_t dest_step_pos = move_params->dest_step_pos;
 	uint16_t curr_lens_pos = 0;
 	int dir = move_params->dir;
-	int32_t num_steps = move_params->num_steps;
+
 
 	if (a_ctrl->step_position_table == NULL) {
 		pr_err("Step Position Table is NULL");
 		return -EFAULT;
 	}
 
-	CDBG("called, dir %d, num_steps %d\n", dir, num_steps);
+	CDBG("called, dir %d, num_steps %d\n", dir, move_params->num_steps);
 
 	if (dest_step_pos == a_ctrl->curr_step_pos)
 		return rc;
@@ -2188,6 +2187,7 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 	struct msm_camera_cci_client *cci_client = NULL;
 	struct msm_actuator_ctrl_t *msm_actuator_t = NULL;
 	struct msm_actuator_vreg *vreg_cfg;
+	int ret;
 	CDBG("Enter\n");
 
 	if (!pdev->dev.of_node) {
@@ -2294,7 +2294,6 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 
 	CDBG("Exit\n");
 
-	int ret;
 	ret = device_create_file(&pdev->dev, &dev_attr_manual_focus);
 	ret = device_create_file(&pdev->dev, &dev_attr_focus_control);
 	if (ret)

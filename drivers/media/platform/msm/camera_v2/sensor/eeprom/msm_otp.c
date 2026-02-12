@@ -2827,8 +2827,8 @@ static int msm_eeprom_config(struct msm_eeprom_ctrl_t *e_ctrl,
 		break;
 	case CFG_EEPROM_READ_COMPRESSED_DATA:
 		rc = eeprom_config_read_compressed_data(e_ctrl, cdata);
-	if (rc < 0)
-		pr_err("%s : eeprom_config_read_compressed_data failed", __func__);
+		if (rc < 0)
+			pr_err("%s : eeprom_config_read_compressed_data failed", __func__);
 		break;
 	case CFG_EEPROM_WRITE_DATA:
 		pr_warn("%s E CFG_OTP_WRITE_DATA\n", __func__);

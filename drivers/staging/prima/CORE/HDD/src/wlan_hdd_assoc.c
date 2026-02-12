@@ -1610,7 +1610,7 @@ static VOS_STATUS hdd_roamDeregisterSTA( hdd_adapter_t *pAdapter, tANI_U8 staId 
  */
 void hdd_print_bss_info(hdd_station_ctx_t *hdd_sta_ctx)
 {
-    uint32_t *cap_info;
+
 
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"WIFI DATA LOGGER");
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"channel: %d",
@@ -1631,14 +1631,16 @@ void hdd_print_bss_info(hdd_station_ctx_t *hdd_sta_ctx)
     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"datarate mcs: %d",
               hdd_sta_ctx->conn_info.txrate.mcs);
     if (hdd_sta_ctx->conn_info.conn_flag.ht_present) {
-        cap_info = (uint32_t *)&hdd_sta_ctx->conn_info.ht_caps;
+        uint32_t val;
+        memcpy(&val, &hdd_sta_ctx->conn_info.ht_caps, sizeof(val));
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"ht caps: %x",
-                  *cap_info);
+                  val);
     }
     if (hdd_sta_ctx->conn_info.conn_flag.vht_present) {
-        cap_info = (uint32_t *)&hdd_sta_ctx->conn_info.vht_caps;
+        uint32_t val;
+        memcpy(&val, &hdd_sta_ctx->conn_info.vht_caps, sizeof(val));
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"vht caps: %x",
-                  *cap_info);
+                  val);
     }
     if (hdd_sta_ctx->conn_info.conn_flag.hs20_present)
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,"hs20 info: %x",

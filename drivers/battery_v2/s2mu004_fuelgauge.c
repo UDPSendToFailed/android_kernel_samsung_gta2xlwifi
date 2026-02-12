@@ -926,7 +926,6 @@ static int s2mu004_get_avgvbat(struct s2mu004_fuelgauge_data *fuelgauge)
 static void s2mu004_fg_get_scaled_capacity(struct s2mu004_fuelgauge_data *fuelgauge,
 						union power_supply_propval *val)
 {
-	int rawsoc = val->intval;
 	
 	val->intval = (val->intval < fuelgauge->pdata->capacity_min) ?
 		0 : ((val->intval - fuelgauge->pdata->capacity_min) * 1000 /

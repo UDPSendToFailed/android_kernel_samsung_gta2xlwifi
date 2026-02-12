@@ -339,7 +339,7 @@ do {									\
 
 #define __put_user_err(x, ptr, err)					\
 do {									\
-	__typeof__(*(ptr)) __pu_val = (x);				\
+	__typeof__(*(ptr)) __pu_val = (__typeof__(*(ptr)))(unsigned long)(x);				\
 	__chk_user_ptr(ptr);						\
 	uaccess_enable_not_uao();					\
 	switch (sizeof(*(ptr))) {					\

@@ -67,7 +67,7 @@ static void ehci_handover_companion_ports(struct ehci_hcd *ehci)
 	port = HCS_N_PORTS(ehci->hcs_params);
 	while (port--) {
 		if (test_bit(port, &ehci->owned_ports)) {
-			reg = &ehci->regs->port_status[port];
+			reg = (u32 __iomem *)ehci->regs->port_status + port;
 			status = ehci_readl(ehci, reg) & ~PORT_RWC_BITS;
 			if (!(status & PORT_POWER)) {
 				status |= PORT_POWER;
@@ -83,7 +83,7 @@ static void ehci_handover_companion_ports(struct ehci_hcd *ehci)
 	port = HCS_N_PORTS(ehci->hcs_params);
 	while (port--) {
 		if (test_bit(port, &ehci->owned_ports)) {
-			reg = &ehci->regs->port_status[port];
+			reg = (u32 __iomem *)ehci->regs->port_status + port;
 			status = ehci_readl(ehci, reg) & ~PORT_RWC_BITS;
 
 			/* Port already owned by companion? */
@@ -120,7 +120,7 @@ static void ehci_handover_companion_ports(struct ehci_hcd *ehci)
 			 * but if something went wrong the port must not
 			 * remain enabled.
 			 */
-			reg = &ehci->regs->port_status[port];
+			reg = (u32 __iomem *)ehci->regs->port_status + port;
 			status = ehci_readl(ehci, reg) & ~PORT_RWC_BITS;
 			if (status & PORT_OWNER)
 				ehci_writel(ehci, status | PORT_CSC, reg);
@@ -151,7 +151,7 @@ static int ehci_port_change(struct ehci_hcd *ehci)
 	 */
 
 	while (i--)
-		if (ehci_readl(ehci, &ehci->regs->port_status[i]) & PORT_CSC)
+		if (ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + i) & PORT_CSC)
 			return 1;
 
 	return 0;
@@ -189,7 +189,7 @@ static void ehci_adjust_port_wakeup_flags(struct ehci_hcd *ehci,
 
 	port = HCS_N_PORTS(ehci->hcs_params);
 	while (port--) {
-		u32 __iomem	*reg = &ehci->regs->port_status[port];
+		u32 __iomem	*reg = (u32 __iomem *)ehci->regs->port_status + port;
 		u32		t1 = ehci_readl(ehci, reg) & ~PORT_RWC_BITS;
 		u32		t2 = t1 & ~PORT_WAKE_BITS;
 
@@ -267,7 +267,7 @@ int ehci_bus_suspend (struct usb_hcd *hcd)
 	fs_idle_delay = false;
 	port = HCS_N_PORTS(ehci->hcs_params);
 	while (port--) {
-		u32 __iomem	*reg = &ehci->regs->port_status [port];
+		u32 __iomem	*reg = (u32 __iomem *)ehci->regs->port_status + port;
 		u32		t1 = ehci_readl(ehci, reg) & ~PORT_RWC_BITS;
 		u32		t2 = t1 & ~PORT_WAKE_BITS;
 
@@ -435,7 +435,7 @@ int ehci_bus_resume (struct usb_hcd *hcd)
 	 */
 	i = HCS_N_PORTS(ehci->hcs_params);
 	while (i--) {
-		temp = ehci_readl(ehci, &ehci->regs->port_status[i]);
+		temp = ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + i);
 		if ((temp & PORT_PE) &&
 				!(temp & (PORT_SUSPEND | PORT_RESUME))) {
 			ehci_dbg(ehci, "Port status(0x%x) is wrong\n", temp);
@@ -472,14 +472,14 @@ int ehci_bus_resume (struct usb_hcd *hcd)
 	/* manually resume the ports we suspended during bus_suspend() */
 	i = HCS_N_PORTS (ehci->hcs_params);
 	while (i--) {
-		temp = ehci_readl(ehci, &ehci->regs->port_status [i]);
+		temp = ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + i);
 		temp &= ~(PORT_RWC_BITS | PORT_WAKE_BITS);
 		if (test_bit(i, &ehci->bus_suspended) &&
 				(temp & PORT_SUSPEND)) {
 			temp |= PORT_RESUME;
 			set_bit(i, &resume_needed);
 		}
-		ehci_writel(ehci, temp, &ehci->regs->port_status [i]);
+		ehci_writel(ehci, temp, (u32 __iomem *)ehci->regs->port_status + i);
 	}
 
 	/*
@@ -496,10 +496,10 @@ int ehci_bus_resume (struct usb_hcd *hcd)
 
 	i = HCS_N_PORTS (ehci->hcs_params);
 	while (i--) {
-		temp = ehci_readl(ehci, &ehci->regs->port_status [i]);
+		temp = ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + i);
 		if (test_bit(i, &resume_needed)) {
 			temp &= ~(PORT_RWC_BITS | PORT_SUSPEND | PORT_RESUME);
-			ehci_writel(ehci, temp, &ehci->regs->port_status [i]);
+			ehci_writel(ehci, temp, (u32 __iomem *)ehci->regs->port_status + i);
 		}
 	}
 
@@ -542,7 +542,7 @@ static void set_owner(struct ehci_hcd *ehci, int portnum, int new_owner)
 	u32			port_status;
 	int 			try;
 
-	status_reg = &ehci->regs->port_status[portnum];
+	status_reg = (u32 __iomem *)ehci->regs->port_status + portnum;
 
 	/*
 	 * The controller won't set the OWNER bit if the port is
@@ -667,7 +667,7 @@ ehci_hub_status_data (struct usb_hcd *hcd, char *buf)
 	for (i = 0; i < ports; i++) {
 		/* leverage per-port change bits feature */
 		if (ppcd & (1 << i))
-			temp = ehci_readl(ehci, &ehci->regs->port_status[i]);
+			temp = ehci_readl(ehci, (u32 __iomem *)ehci->regs->port_status + i);
 		else
 			temp = 0;
 
@@ -883,8 +883,8 @@ int ehci_hub_control(
 ) {
 	struct ehci_hcd	*ehci = hcd_to_ehci (hcd);
 	int		ports = HCS_N_PORTS (ehci->hcs_params);
-	u32 __iomem	*status_reg = &ehci->regs->port_status[
-				(wIndex & 0xff) - 1];
+	u32 __iomem	*status_reg = (u32 __iomem *)ehci->regs->port_status +
+				((wIndex & 0xff) - 1);
 	u32 __iomem	*hostpc_reg = &ehci->regs->hostpc[(wIndex & 0xff) - 1];
 	u32		temp, temp1, status;
 	unsigned long	flags;
@@ -1271,7 +1271,7 @@ int ehci_hub_control(
 			/* Put all enabled ports into suspend */
 			while (!ehci->no_testmode_suspend && ports--) {
 				u32 __iomem *sreg =
-						&ehci->regs->port_status[ports];
+						(u32 __iomem *)ehci->regs->port_status + ports;
 
 				temp = ehci_readl(ehci, sreg) & ~PORT_RWC_BITS;
 				if (temp & PORT_PE)
@@ -1321,6 +1321,6 @@ static int ehci_port_handed_over(struct usb_hcd *hcd, int portnum)
 
 	if (ehci_is_TDI(ehci))
 		return 0;
-	reg = &ehci->regs->port_status[portnum - 1];
+	reg = (u32 __iomem *)ehci->regs->port_status + (portnum - 1);
 	return ehci_readl(ehci, reg) & PORT_OWNER;
 }
