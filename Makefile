@@ -404,13 +404,15 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 		   -Wno-format-security \
 		   -std=gnu89
 
-# GCC flags to tune generated code for ROSY's Cortex-A53 CPU
-KBUILD_CFLAGS += -march=armv8-a -mtune=cortex-a53
+# GCC 15 flags tuned for SD450's Cortex-A53 (32KB L1I, 2-wide in-order)
+KBUILD_CFLAGS += -march=armv8-a+crc -mtune=cortex-a53
 
-KBUILD_CFLAGS += -funroll-loops -finline-functions -funswitch-loops \
-				 -fpeel-loops -fprefetch-loop-arrays -falign-functions=16 \
-				 -falign-loops=16 -falign-jumps=16 -fschedule-insns2 -fipa-pta \
-				 -fmodulo-sched -fgraphite-identity
+# In-order scheduling is critical: compiler order = execution order on A53
+# Cherry-pick -O3 passes that improve codegen without inflating code size
+KBUILD_CFLAGS += -falign-functions=16 -falign-loops=8 \
+				 -fschedule-insns -fschedule-insns2 -fipa-pta \
+				 -fmodulo-sched -fmodulo-sched-allow-regmoves \
+				 -fpredictive-commoning -ftree-partial-pre
 
 KBUILD_AFLAGS_KERNEL :=
 KBUILD_CFLAGS_KERNEL :=
@@ -652,7 +654,7 @@ KBUILD_AFLAGS	+= $(call cc-option,-fno-PIE)
 ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= -Os $(call cc-disable-warning,maybe-uninitialized,)
 else
-KBUILD_CFLAGS	+= -O3 $(call cc-disable-warning,maybe-uninitialized,)
+KBUILD_CFLAGS	+= -O2 $(call cc-disable-warning,maybe-uninitialized,)
 endif
 
 BUILD_CFLAGS   += $(call cc-disable-warning,maybe-uninitialized,) \

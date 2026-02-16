@@ -43,7 +43,7 @@
 
 #define KGSL_MAX_BUSLEVELS	20
 
-#define DEFAULT_BUS_P 25
+#define DEFAULT_BUS_P 50
 
 /* Order deeply matters here because reasons. New entries go on the end */
 static const char * const clocks[] = {
@@ -2139,7 +2139,7 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 
 	if (of_property_read_u32(pdev->dev.of_node, "qcom,deep-nap-timeout",
 		&pwr->deep_nap_timeout))
-		pwr->deep_nap_timeout = 20;
+		pwr->deep_nap_timeout = 66;
 
 	pwr->gx_retention = of_property_read_bool(pdev->dev.of_node,
 						"qcom,gx-retention");

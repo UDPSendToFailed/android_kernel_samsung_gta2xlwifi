@@ -19,7 +19,7 @@
 #include "kgsl_pwrctrl.h"
 
 /* devfreq governor call window in usec */
-#define KGSL_GOVERNOR_CALL_INTERVAL 10000
+#define KGSL_GOVERNOR_CALL_INTERVAL 5000
 
 /* Power events to be tracked with history */
 #define KGSL_PWREVENT_STATE	0

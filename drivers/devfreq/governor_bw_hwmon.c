@@ -877,21 +877,21 @@ int register_bw_hwmon(struct device *dev, struct bw_hwmon *hwmon)
 	}
 
 	node->guard_band_mbps = 100;
-	node->decay_rate = 90;
-	node->io_percent = 16;
+	node->decay_rate = 75;
+	node->io_percent = 25;
 	node->low_power_ceil_mbps = 0;
 	node->low_power_io_percent = 16;
 	node->low_power_delay = 60;
 	node->bw_step = 190;
-	node->sample_ms = 50;
+	node->sample_ms = 20;
 	node->up_scale = 0;
-	node->up_thres = 10;
+	node->up_thres = 5;
 	node->down_thres = 0;
 	node->down_count = 3;
 	node->hist_memory = 0;
 	node->hyst_trigger_count = 3;
 	node->hyst_length = 0;
-	node->idle_mbps = 400;
+	node->idle_mbps = 600;
 	node->mbps_zones[0] = 0;
 	node->hw = hwmon;
 

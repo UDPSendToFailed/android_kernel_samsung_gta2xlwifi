@@ -22,7 +22,7 @@
 #define MIN_BUSY                1000
 #define LONG_FLOOR              50000
 #define HIST                    5
-#define TARGET                  80
+#define TARGET                  70
 #define CAP                     75
 /* AB vote is in multiple of BW_STEP Mega bytes */
 #define BW_STEP                 160

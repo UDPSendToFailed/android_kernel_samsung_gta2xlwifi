@@ -310,7 +310,7 @@ int register_memlat(struct device *dev, struct memlat_hwmon *hw)
 	node->gov = &devfreq_gov_memlat;
 	node->attr_grp = &dev_attr_group;
 
-	node->ratio_ceil = 10;
+	node->ratio_ceil = 20;
 	node->freq_thresh_mhz = 900;
 	node->mult_factor = 8;
 	node->hw = hw;

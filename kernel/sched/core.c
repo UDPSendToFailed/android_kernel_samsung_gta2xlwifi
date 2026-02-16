@@ -335,7 +335,7 @@ late_initcall(sched_init_debug);
  * Number of tasks to iterate in a single balance run.
  * Limited because this is done with IRQs disabled.
  */
-const_debug unsigned int sysctl_sched_nr_migrate = 32;
+const_debug unsigned int sysctl_sched_nr_migrate = 64;
 
 /*
  * period over which we average the RT time consumption, measured
@@ -1750,9 +1750,9 @@ __read_mostly unsigned int sysctl_sched_ravg_hist_size = 5;
 #endif
 
 static __read_mostly unsigned int sched_window_stats_policy =
-	 WINDOW_STATS_MAX_RECENT_AVG;
+	 WINDOW_STATS_MAX;
 __read_mostly unsigned int sysctl_sched_window_stats_policy =
-	WINDOW_STATS_MAX_RECENT_AVG;
+	WINDOW_STATS_MAX;
 
 #define SCHED_ACCOUNT_WAIT_TIME 1
 
@@ -1768,7 +1768,7 @@ unsigned int __read_mostly sysctl_sched_enable_thread_grouping = 0;
 
 #ifdef CONFIG_SCHED_FREQ_INPUT
 
-__read_mostly unsigned int sysctl_sched_new_task_windows = 5;
+__read_mostly unsigned int sysctl_sched_new_task_windows = 3;
 
 #define SCHED_FREQ_ACCOUNT_WAIT_TIME 0
 
@@ -1879,8 +1879,8 @@ __read_mostly unsigned int sched_major_task_runtime = 10000000;
  *	C1 busy time = 5 + 5 + 6 = 16ms
  *
  */
-static __read_mostly unsigned int sched_freq_aggregate;
-__read_mostly unsigned int sysctl_sched_freq_aggregate;
+static __read_mostly unsigned int sched_freq_aggregate = 1;
+__read_mostly unsigned int sysctl_sched_freq_aggregate = 1;
 
 #endif
 
@@ -5083,7 +5083,7 @@ static void ttwu_queue(struct task_struct *p, int cpu, int wake_flags)
 	raw_spin_unlock(&rq->lock);
 }
 
-__read_mostly unsigned int sysctl_sched_wakeup_load_threshold = 110;
+__read_mostly unsigned int sysctl_sched_wakeup_load_threshold = 80;
 
 /**
  * try_to_wake_up - wake up a thread

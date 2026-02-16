@@ -102,7 +102,7 @@ int sysctl_tcp_thin_dupack __read_mostly;
 
 int sysctl_tcp_moderate_rcvbuf __read_mostly = 1;
 int sysctl_tcp_early_retrans __read_mostly = 3;
-int sysctl_tcp_default_init_rwnd __read_mostly = TCP_INIT_CWND * 2;
+int sysctl_tcp_default_init_rwnd __read_mostly = 64;
 
 #ifdef CONFIG_NETPM
 int sysctl_tcp_netpm[4] __read_mostly;	/* Timestamp, RAT, PHY status, Access TP */
