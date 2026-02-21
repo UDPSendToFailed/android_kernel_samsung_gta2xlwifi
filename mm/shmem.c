@@ -3060,7 +3060,7 @@ SYSCALL_DEFINE2(memfd_create,
 	if (flags & MFD_NOEXEC_SEAL) {
 		struct inode *inode = file_inode(file);
 
-		file_inode(file)->i_mode &= ~0111;
+		inode->i_mode &= ~0111;
 		if(info->seals) {
 			info->seals &= ~F_SEAL_SEAL;
 			info->seals |= F_SEAL_EXEC;
