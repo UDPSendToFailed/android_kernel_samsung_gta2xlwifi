@@ -1421,6 +1421,7 @@ config CRYPTO_ZSTD
 	tristate "Zstd compression algorithm"
 	select CRYPTO_ALGAPI
 	select CRYPTO_ACOMP2
+	select ZSTD_COMMON
 	select ZSTD_COMPRESS
 	select ZSTD_DECOMPRESS
 	help
