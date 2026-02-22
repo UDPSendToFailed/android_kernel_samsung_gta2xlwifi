@@ -337,6 +337,13 @@ static unsigned long move_vma(struct vm_area_struct *vma,
 	vm_stat_account(mm, vma->vm_flags, vma->vm_file, new_len>>PAGE_SHIFT);
 
 	if (unlikely(!err && (flags & MREMAP_DONTUNMAP))) {
+		/*
+		 * We are leaving the old VMA behind. The new VMA should not
+		 * inherit the userfaultfd context or flags from the old VMA.
+		 */
+		new_vma->vm_userfaultfd_ctx = NULL_VM_UFFD_CTX;
+		new_vma->vm_flags &= ~(VM_UFFD_WP | VM_UFFD_MISSING);
+
 		if (vm_flags & VM_ACCOUNT) {
 			/* Always put back VM_ACCOUNT since we won't unmap */
 			vma->vm_flags |= VM_ACCOUNT;

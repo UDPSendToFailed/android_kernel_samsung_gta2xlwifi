@@ -293,6 +293,9 @@ int handle_userfault(struct vm_area_struct *vma, unsigned long address,
 	VM_BUG_ON(reason & ~(VM_UFFD_MISSING|VM_UFFD_WP));
 	VM_BUG_ON(!(reason & VM_UFFD_MISSING) ^ !!(reason & VM_UFFD_WP));
 
+	if (ctx->features & UFFD_FEATURE_SIGBUS)
+		goto out;
+
 	/*
 	 * If it's already released don't get it. This avoids to loop
 	 * in __get_user_pages if userfaultfd_release waits on the
@@ -1385,8 +1388,10 @@ static int userfaultfd_copy(struct userfaultfd_ctx *ctx,
 		goto out;
 
 	ret = validate_range(ctx->mm, uffdio_copy.dst, uffdio_copy.len);
-	if (ret)
+	if (ret) {
+		pr_err("userfaultfd_copy: validate_range failed (ret=%d) dst=0x%llx len=%llu\n", (int)ret, uffdio_copy.dst, uffdio_copy.len);
 		goto out;
+	}
 	/*
 	 * double check for wraparound just in case. copy_from_user()
 	 * will later check uffdio_copy.src + uffdio_copy.len to fit
@@ -1471,6 +1476,65 @@ static inline unsigned int uffd_ctx_features(__u64 user_features)
 	return (unsigned int)user_features;
 }
 
+static int userfaultfd_move(struct userfaultfd_ctx *ctx,
+                            unsigned long arg)
+{
+       __s64 ret;
+       struct uffdio_move uffdio_move;
+       struct uffdio_move __user *user_uffdio_move;
+       struct userfaultfd_wake_range range;
+
+       user_uffdio_move = (struct uffdio_move __user *) arg;
+
+       ret = -EFAULT;
+       if (copy_from_user(&uffdio_move, user_uffdio_move,
+                          sizeof(uffdio_move) - sizeof(__s64)))
+               goto out;
+
+       ret = validate_range(ctx->mm, uffdio_move.dst, uffdio_move.len);
+       if (ret)
+               goto out;
+
+       ret = validate_range(ctx->mm, uffdio_move.src, uffdio_move.len);
+       if (ret)
+               goto out;
+
+       ret = -EINVAL;
+       if (uffdio_move.src == uffdio_move.dst)
+               goto out;
+
+       /*
+        * Android ART may pass flags that we don't support yet.
+        * We ignore unknown flags for now to maintain compatibility.
+        */
+       if (uffdio_move.mode & ~(UFFDIO_MOVE_MODE_DONTWAKE | UFFDIO_MOVE_MODE_ALLOW_SRC_HOLES)) {
+               /* Ignore unknown mode flags */
+       }
+
+       if (mmget_not_zero(ctx->mm)) {
+               ret = mcopy_atomic_move(ctx, ctx->mm, uffdio_move.dst, uffdio_move.src,
+                                       uffdio_move.len, uffdio_move.mode);
+               mmput(ctx->mm);
+       } else {
+               return -ESRCH;
+       }
+
+    if (unlikely(put_user(ret, &user_uffdio_move->move)))
+        return -EFAULT;
+    if (ret < 0)
+        goto out;
+
+    BUG_ON(!ret);
+    range.len = ret;
+    if (!(uffdio_move.mode & UFFDIO_MOVE_MODE_DONTWAKE)) {
+        range.start = uffdio_move.dst;
+        wake_userfault(ctx, &range);
+    }
+    ret = range.len == uffdio_move.len ? 0 : -EAGAIN;
+out:
+    return ret;
+}
+
 /*
  * userland asks for a certain API version and we return which bits
  * and ioctl commands are implemented in this kernel for such API
@@ -1513,35 +1577,38 @@ out:
 }
 
 static long userfaultfd_ioctl(struct file *file, unsigned cmd,
-			      unsigned long arg)
+                              unsigned long arg)
 {
-	int ret = -EINVAL;
-	struct userfaultfd_ctx *ctx = file->private_data;
+        struct userfaultfd_ctx *ctx = file->private_data;
+        int ret = -ENOTTY;
 
-	if (cmd != UFFDIO_API && ctx->state == UFFD_STATE_WAIT_API)
-		return -EINVAL;
+        if (cmd != UFFDIO_API && ctx->state == UFFD_STATE_WAIT_API)
+                return -EINVAL;
 
-	switch(cmd) {
-	case UFFDIO_API:
-		ret = userfaultfd_api(ctx, arg);
-		break;
-	case UFFDIO_REGISTER:
-		ret = userfaultfd_register(ctx, arg);
-		break;
-	case UFFDIO_UNREGISTER:
-		ret = userfaultfd_unregister(ctx, arg);
-		break;
-	case UFFDIO_WAKE:
-		ret = userfaultfd_wake(ctx, arg);
-		break;
-	case UFFDIO_COPY:
-		ret = userfaultfd_copy(ctx, arg);
-		break;
-	case UFFDIO_ZEROPAGE:
-		ret = userfaultfd_zeropage(ctx, arg);
-		break;
-	}
-	return ret;
+        switch(cmd) {
+        case UFFDIO_API:
+                ret = userfaultfd_api(ctx, arg);
+                break;
+        case UFFDIO_REGISTER:
+                ret = userfaultfd_register(ctx, arg);
+                break;
+        case UFFDIO_UNREGISTER:
+                ret = userfaultfd_unregister(ctx, arg);
+                break;
+        case UFFDIO_WAKE:
+                ret = userfaultfd_wake(ctx, arg);
+                break;
+        case UFFDIO_COPY:
+                ret = userfaultfd_copy(ctx, arg);
+                break;
+        case UFFDIO_ZEROPAGE:
+                ret = userfaultfd_zeropage(ctx, arg);
+                break;
+        case UFFDIO_MOVE:
+                ret = userfaultfd_move(ctx, arg);
+                break;
+        }
+        return ret;
 }
 
 #ifdef CONFIG_PROC_FS

@@ -191,6 +191,14 @@ static u32 seccomp_run_filters(struct seccomp_data *sd)
 		sd = &sd_local;
 	}
 
+		/*
+		 * Special allowance for Android's modern ART GC.
+		 * 0xc028aa05 corresponds to UFFDIO_MOVE.
+		 */
+		if (sd->nr == __NR_ioctl && sd->args[1] == 0xc028aa05) {
+				return SECCOMP_RET_ALLOW;
+		}
+
 	/*
 	 * All filters in the list are evaluated and the lowest BPF return
 	 * value always takes priority (ignoring the DATA).

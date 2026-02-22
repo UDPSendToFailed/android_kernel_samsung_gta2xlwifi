@@ -2641,7 +2641,7 @@ static int do_anonymous_page(struct mm_struct *mm, struct vm_area_struct *vma,
 	/* Deliver the page fault to userland, check inside PT lock */
 	if (userfaultfd_missing(vma)) {
 		pte_unmap_unlock(page_table, ptl);
-		mem_cgroup_uncharge_page(page);
+		mem_cgroup_cancel_charge(page, memcg);
 		page_cache_release(page);
 		return handle_userfault(vma, address, flags,
 					VM_UFFD_MISSING);
@@ -3187,6 +3187,13 @@ static int handle_pte_fault(struct mm_struct *mm,
 	entry = ACCESS_ONCE(*pte);
 	if (!pte_present(entry)) {
 		if (pte_none(entry)) {
+				/* Handle userfaultfd before routing to specific handlers */
+				if (userfaultfd_missing(vma)) {
+					pte_unmap(pte);
+					return handle_userfault(vma, address, flags,
+								VM_UFFD_MISSING);
+				}
+				
 			if (vma->vm_ops)
 				return do_linear_fault(mm, vma, address,
 						pte, pmd, flags, entry);

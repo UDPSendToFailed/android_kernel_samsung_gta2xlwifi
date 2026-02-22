@@ -34,6 +34,13 @@ extern int handle_userfault(struct vm_area_struct *vma, unsigned long address,
 
 extern ssize_t mcopy_atomic(struct mm_struct *dst_mm, unsigned long dst_start,
 			    unsigned long src_start, unsigned long len);
+struct userfaultfd_ctx;
+extern ssize_t mcopy_atomic_move(struct userfaultfd_ctx *ctx,
+					struct mm_struct *dst_mm,
+					unsigned long dst_start,
+					unsigned long src_start,
+					unsigned long len,
+					__u64 mode);
 extern ssize_t mfill_zeropage(struct mm_struct *dst_mm,
 			      unsigned long dst_start,
 			      unsigned long len);
