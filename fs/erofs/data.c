@@ -8,7 +8,7 @@
 
 #include <trace/events/erofs.h>
 
-static void erofs_readendio(struct bio *bio)
+static void erofs_readendio(struct bio *bio, int error)
 {
 	int i;
 	struct bio_vec *bvec;
@@ -19,7 +19,7 @@ static void erofs_readendio(struct bio *bio)
 		/* page is already locked */
 		DBG_BUGON(PageUptodate(page));
 
-		if (bio->bi_error)
+		if (error)
 			SetPageError(page);
 		else
 			SetPageUptodate(page);
@@ -36,7 +36,7 @@ struct page *erofs_get_meta_page(struct super_block *sb, erofs_blk_t blkaddr)
 	struct page *page;
 
 	page = read_cache_page_gfp(mapping, blkaddr,
-				   mapping_gfp_constraint(mapping, ~__GFP_FS));
+				   mapping_gfp_mask(mapping) & ~__GFP_FS);
 	/* should already be PageUptodate */
 	if (!IS_ERR(page))
 		lock_page(page);
@@ -131,7 +131,7 @@ static inline struct bio *erofs_read_raw_page(struct bio *bio,
 	    /* not continuous */
 	    *last_block + 1 != current_block) {
 submit_bio_retry:
-		submit_bio(bio);
+		submit_bio(READA, bio);
 		bio = NULL;
 	}
 
@@ -207,7 +207,6 @@ submit_bio_retry:
 		bio->bi_bdev = sb->s_bdev;
 		bio->bi_iter.bi_sector = (sector_t)blknr <<
 			LOG_SECTORS_PER_BLOCK;
-		bio->bi_opf = REQ_OP_READ | (ra ? REQ_RAHEAD : 0);
 	}
 
 	err = bio_add_page(bio, page, PAGE_SIZE, 0);
@@ -238,7 +237,7 @@ has_updated:
 	/* if updated manually, continuous pages has a gap */
 	if (bio)
 submit_bio_out:
-		submit_bio(bio);
+		submit_bio(READA, bio);
 	return err ? ERR_PTR(err) : NULL;
 }
 
@@ -270,7 +269,7 @@ static int erofs_raw_access_readpages(struct file *filp,
 {
 	erofs_off_t last_block;
 	struct bio *bio = NULL;
-	gfp_t gfp = readahead_gfp_mask(mapping);
+	gfp_t gfp = mapping_gfp_mask(mapping) | __GFP_NORETRY | __GFP_NOWARN;
 	struct page *page = list_last_entry(pages, struct page, lru);
 
 	trace_erofs_readpages(mapping->host, page, nr_pages, true);
@@ -302,7 +301,7 @@ static int erofs_raw_access_readpages(struct file *filp,
 
 	/* the rare case (end in gaps) */
 	if (bio)
-		submit_bio(bio);
+		submit_bio(READA, bio);
 	return 0;
 }
 

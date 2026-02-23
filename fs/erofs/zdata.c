@@ -245,7 +245,7 @@ static void preload_compressed_pages(struct z_erofs_collector *clt,
 {
 	struct z_erofs_pcluster *pcl = clt->pcl;
 	bool standalone = true;
-	gfp_t gfp = (mapping_gfp_mask(mc) & ~__GFP_DIRECT_RECLAIM) |
+	gfp_t gfp = (mapping_gfp_mask(mc) & ~__GFP_WAIT) |
 			__GFP_NOMEMALLOC | __GFP_NORETRY | __GFP_NOWARN;
 	struct page **pages;
 	pgoff_t index;
@@ -804,7 +804,7 @@ static bool z_erofs_page_is_invalidated(struct page *page)
 	return !page->mapping && !z_erofs_is_shortlived_page(page);
 }
 
-static void z_erofs_decompressqueue_endio(struct bio *bio)
+static void z_erofs_decompressqueue_endio(struct bio *bio, int error)
 {
 	tagptr1_t t = tagptr_init(tagptr1_t, bio->bi_private);
 	struct z_erofs_decompressqueue *q = tagptr_unfold_ptr(t);
@@ -817,11 +817,11 @@ static void z_erofs_decompressqueue_endio(struct bio *bio)
 		DBG_BUGON(PageUptodate(page));
 		DBG_BUGON(z_erofs_page_is_invalidated(page));
 
-		if (bio->bi_error)
+		if (error)
 			SetPageError(page);
 
 		if (erofs_page_is_managed(EROFS_SB(q->sb), page)) {
-			if (!bio->bi_error)
+			if (!error)
 				SetPageUptodate(page);
 			unlock_page(page);
 		}
@@ -1296,7 +1296,7 @@ static void z_erofs_submit_queue(struct super_block *sb,
 
 			if (bio && cur != last_index + 1) {
 submit_bio_retry:
-				submit_bio(bio);
+				submit_bio(f->readahead ? READA : READ, bio);
 				bio = NULL;
 			}
 
@@ -1308,9 +1308,6 @@ submit_bio_retry:
 				bio->bi_iter.bi_sector = (sector_t)cur <<
 					LOG_SECTORS_PER_BLOCK;
 				bio->bi_private = bi_private;
-				bio->bi_opf = REQ_OP_READ;
-				if (f->readahead)
-					bio->bi_opf |= REQ_RAHEAD;
 				++nr_bios;
 			}
 
@@ -1328,7 +1325,7 @@ submit_bio_retry:
 	} while (owned_head != Z_EROFS_PCLUSTER_TAIL);
 
 	if (bio)
-		submit_bio(bio);
+		submit_bio(f->readahead ? READA : READ, bio);
 
 	/*
 	 * although background is preferred, no one is pending for submission.
@@ -1400,7 +1397,7 @@ static int z_erofs_readpages(struct file *filp, struct address_space *mapping,
 
 	bool sync = (nr_pages <= sbi->max_sync_decompress_pages);
 	struct z_erofs_decompress_frontend f = DECOMPRESS_FRONTEND_INIT(inode);
-	gfp_t gfp = mapping_gfp_constraint(mapping, GFP_KERNEL);
+	gfp_t gfp = mapping_gfp_mask(mapping) & GFP_KERNEL;
 	struct page *head = NULL;
 	LIST_HEAD(pagepool);
 

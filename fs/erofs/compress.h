@@ -70,7 +70,7 @@ static inline bool z_erofs_put_shortlivedpage(struct list_head *pagepool,
 		return false;
 
 	/* short-lived pages should not be used by others at the same time */
-	if (page_ref_count(page) > 1) {
+	if (page_count(page) > 1) {
 		put_page(page);
 	} else {
 		/* follow the pcluster rule above. */

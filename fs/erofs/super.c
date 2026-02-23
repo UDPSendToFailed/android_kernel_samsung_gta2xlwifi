@@ -97,7 +97,7 @@ static void i_callback(struct rcu_head *head)
 
 	/* be careful of RCU symlink path */
 	if (inode->i_op == &erofs_fast_symlink_iops)
-		kfree(inode->i_link);
+		kfree(inode->i_private);
 	kfree(vi->xattr_shared_xattrs);
 
 	kmem_cache_free(erofs_inode_cachep, vi);

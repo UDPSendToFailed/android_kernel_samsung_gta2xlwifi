@@ -214,7 +214,7 @@ static struct dentry *erofs_lookup(struct inode *dir,
 	unsigned int d_type;
 	struct inode *inode;
 
-	DBG_BUGON(!d_really_is_negative(dentry));
+	DBG_BUGON(dentry->d_inode);
 	/* dentry must be unhashed in lookup, no need to worry about */
 	DBG_BUGON(!d_unhashed(dentry));
 
@@ -243,6 +243,9 @@ static struct dentry *erofs_lookup(struct inode *dir,
 const struct inode_operations erofs_dir_iops = {
 	.lookup = erofs_lookup,
 	.getattr = erofs_getattr,
+	.getxattr = generic_getxattr,
+    .setxattr = generic_setxattr,
+    .removexattr = generic_removexattr,
 	.listxattr = erofs_listxattr,
 	.get_acl = erofs_get_acl,
 };

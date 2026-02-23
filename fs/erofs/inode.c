@@ -4,6 +4,7 @@
  *             https://www.huawei.com/
  */
 #include "xattr.h"
+#include <linux/namei.h>
 
 #include <trace/events/erofs.h>
 
@@ -224,7 +225,7 @@ static int erofs_fill_symlink(struct inode *inode, void *data,
 	memcpy(lnk, data + m_pofs, inode->i_size);
 	lnk[inode->i_size] = '\0';
 
-	inode->i_link = lnk;
+	inode->i_private = lnk;
 	inode->i_op = &erofs_fast_symlink_iops;
 	return 0;
 }
@@ -357,20 +358,38 @@ int erofs_getattr(struct vfsmount *mnt, struct dentry *dentry,
 
 const struct inode_operations erofs_generic_iops = {
 	.getattr = erofs_getattr,
+	.getxattr = generic_getxattr,
+    .setxattr = generic_setxattr,
+    .removexattr = generic_removexattr,
 	.listxattr = erofs_listxattr,
 	.get_acl = erofs_get_acl,
 };
 
 const struct inode_operations erofs_symlink_iops = {
-	.get_link = page_get_link,
-	.getattr = erofs_getattr,
-	.listxattr = erofs_listxattr,
-	.get_acl = erofs_get_acl,
+    .readlink = generic_readlink,
+    .follow_link = page_follow_link_light,
+    .put_link = page_put_link,
+    .getattr = erofs_getattr,
+	.getxattr = generic_getxattr,
+    .setxattr = generic_setxattr,
+    .removexattr = generic_removexattr,
+    .listxattr = erofs_listxattr,
+    .get_acl = erofs_get_acl,
 };
 
+static void *erofs_fast_follow_link(struct dentry *dentry, struct nameidata *nd)
+{
+    nd_set_link(nd, dentry->d_inode->i_private);
+    return NULL;
+}
+
 const struct inode_operations erofs_fast_symlink_iops = {
-	.get_link = simple_get_link,
-	.getattr = erofs_getattr,
-	.listxattr = erofs_listxattr,
-	.get_acl = erofs_get_acl,
+    .readlink = generic_readlink,
+    .follow_link = erofs_fast_follow_link,
+    .getattr = erofs_getattr,
+	.getxattr = generic_getxattr,
+    .setxattr = generic_setxattr,
+    .removexattr = generic_removexattr,
+    .listxattr = erofs_listxattr,
+    .get_acl = erofs_get_acl,
 };

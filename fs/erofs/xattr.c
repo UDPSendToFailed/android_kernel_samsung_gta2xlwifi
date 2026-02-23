@@ -430,16 +430,6 @@ static int shared_getxattr(struct inode *inode, struct getxattr_iter *it)
 	return ret ? ret : it->buffer_size;
 }
 
-static bool erofs_xattr_user_list(struct dentry *dentry)
-{
-	return test_opt(EROFS_SB(dentry->d_sb), XATTR_USER);
-}
-
-static bool erofs_xattr_trusted_list(struct dentry *dentry)
-{
-	return capable(CAP_SYS_ADMIN);
-}
-
 int erofs_getxattr(struct inode *inode, int index,
 		   const char *name,
 		   void *buffer, size_t buffer_size)
@@ -471,39 +461,22 @@ int erofs_getxattr(struct inode *inode, int index,
 	return ret;
 }
 
-static int erofs_xattr_generic_get(const struct xattr_handler *handler,
-				   struct dentry *unused, struct inode *inode,
-				   const char *name, void *buffer, size_t size)
+static int erofs_xattr_generic_get(struct dentry *dentry, const char *name, void *buffer, size_t size, int type)
 {
-	struct erofs_sb_info *const sbi = EROFS_I_SB(inode);
-
-	switch (handler->flags) {
-	case EROFS_XATTR_INDEX_USER:
-		if (!test_opt(sbi, XATTR_USER))
-			return -EOPNOTSUPP;
-		break;
-	case EROFS_XATTR_INDEX_TRUSTED:
-		break;
-	case EROFS_XATTR_INDEX_SECURITY:
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return erofs_getxattr(inode, handler->flags, name, buffer, size);
+    if (!name || strcmp(name, "") == 0)
+        return -EINVAL;
+    return erofs_getxattr(dentry->d_inode, type, name, buffer, size);
 }
 
 const struct xattr_handler erofs_xattr_user_handler = {
 	.prefix	= XATTR_USER_PREFIX,
 	.flags	= EROFS_XATTR_INDEX_USER,
-	.list	= erofs_xattr_user_list,
 	.get	= erofs_xattr_generic_get,
 };
 
 const struct xattr_handler erofs_xattr_trusted_handler = {
 	.prefix	= XATTR_TRUSTED_PREFIX,
 	.flags	= EROFS_XATTR_INDEX_TRUSTED,
-	.list	= erofs_xattr_trusted_list,
 	.get	= erofs_xattr_generic_get,
 };
 
@@ -547,10 +520,10 @@ static int xattr_entrylist(struct xattr_iter *_it,
 	const struct xattr_handler *h =
 		erofs_xattr_handler(entry->e_name_index);
 
-	if (!h || (h->list && !h->list(it->dentry)))
+	if (!h)
 		return 1;
 
-	prefix = xattr_prefix(h);
+	prefix = h->prefix;
 	prefix_len = strlen(prefix);
 
 	if (!it->buffer) {
