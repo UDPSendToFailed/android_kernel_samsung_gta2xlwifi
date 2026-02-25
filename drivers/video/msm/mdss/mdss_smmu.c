@@ -285,9 +285,6 @@ static int mdss_smmu_map_dma_buf_v2(struct dma_buf *dma_buf,
 {
 	int rc;
 	struct mdss_smmu_client *mdss_smmu = mdss_smmu_get_cb(domain);
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-	int retry_cnt;
-#endif
 
 	if (!mdss_smmu) {
 		pr_err("not able to get smmu context\n");
@@ -296,23 +293,23 @@ static int mdss_smmu_map_dma_buf_v2(struct dma_buf *dma_buf,
 	ATRACE_BEGIN("map_buffer");
 	rc = msm_dma_map_sg_lazy(mdss_smmu->dev, table->sgl, table->nents, dir,
 		dma_buf);
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-	if (!in_interrupt()) {
+	if (rc != table->nents) {
+		/*
+		 * Lazy DMA mapper failure: deferred IOMMU unmaps are likely
+		 * holding VA space. Flush them and retry with the non-lazy
+		 * mapper which sets DMA_ATTR_NO_DELAYED_UNMAP.
+		 */
+		msm_dma_unmap_all_for_dev(mdss_smmu->dev);
+
+		rc = msm_dma_map_sg(mdss_smmu->dev, table->sgl, table->nents,
+			dir, dma_buf);
 		if (rc != table->nents) {
-			for (retry_cnt = 0; retry_cnt < 62 ; retry_cnt++) {
-				/* To wait free page by memory reclaim*/
-				msleep(16);
-
-				pr_err("dma map sg failed : retry (%d)\n", retry_cnt);
-				rc = msm_dma_map_sg_lazy(mdss_smmu->dev, table->sgl, table->nents, dir,
-					dma_buf);
-
-				if (rc == table->nents)
-					break;
-			}
+			/* Final attempt: yield to let memory reclaim run */
+			cond_resched();
+			rc = msm_dma_map_sg(mdss_smmu->dev, table->sgl,
+				table->nents, dir, dma_buf);
 		}
 	}
-#endif
 
 	if (rc != table->nents) {
 		pr_err("dma map sg failed(%d)\n", rc);

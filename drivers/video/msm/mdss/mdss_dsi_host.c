@@ -2128,10 +2128,6 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 	struct mdss_dsi_ctrl_pdata *mctrl = NULL;
 	int ignored = 0;	/* overflow ignored */
 
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-	int retry_cnt;
-#endif
-
 	bp = tp->data;
 
 	len = ALIGN(tp->len, 4);
@@ -2142,23 +2138,23 @@ static int mdss_dsi_cmd_dma_tx(struct mdss_dsi_ctrl_pdata *ctrl,
 		ret = mdss_smmu_dsi_map_buffer(tp->dmap, domain, ctrl->dma_size,
 			&(ctrl->dma_addr), tp->start, DMA_TO_DEVICE);
 
-#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
-		if (IS_ERR_VALUE(ret)) {
-			if (!in_interrupt()) {
-				for (retry_cnt = 0; retry_cnt < 62 ; retry_cnt++) {
-					/* To wait free page by memory reclaim*/
-					msleep(16);
+		if (IS_ERR_VALUE(ret) && !in_interrupt()) {
+			int i;
 
-					pr_err("dma map sg failed : retry (%d)\n", retry_cnt);
-					ret = mdss_smmu_dsi_map_buffer(tp->dmap, domain, ctrl->dma_size,
-						&(ctrl->dma_addr), tp->start, DMA_TO_DEVICE);
-
-					if (!IS_ERR_VALUE(ret))
-						break;
-				}
+			for (i = 0; i < 5; i++) {
+				usleep_range(1000, 2000);
+				ret = mdss_smmu_dsi_map_buffer(tp->dmap,
+					domain, ctrl->dma_size,
+					&(ctrl->dma_addr), tp->start,
+					DMA_TO_DEVICE);
+				if (!IS_ERR_VALUE(ret))
+					break;
 			}
+			if (IS_ERR_VALUE(ret))
+				pr_warn_ratelimited(
+					"dsi dma map failed after %d retries\n",
+					i);
 		}
-#endif
 		if (IS_ERR_VALUE(ret)) {
 			pr_err("unable to map dma memory to iommu(%d)\n", ret);
 			ctrl->mdss_util->iommu_unlock();

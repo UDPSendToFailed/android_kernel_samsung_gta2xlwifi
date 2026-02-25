@@ -3075,16 +3075,12 @@ static int __mdss_fb_wait_for_fence_sub(struct msm_sync_pt_data *sync_pt_data,
 		ret = sync_fence_wait(fences[i], wait_ms);
 #if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
 		if (ret == -ETIME) {
-
-#ifdef CONFIG_SYNC_DEBUG
-			pr_warn("%s: sync_fence_wait timed out! ",
-					fences[i]->name);
-#endif
-			pr_cont("Waiting %ld.%ld more seconds\n",
-				(wait_ms/MSEC_PER_SEC), (wait_ms%MSEC_PER_SEC));
+			pr_warn_ratelimited(
+				"fence recovery: signaling timeline after %ldms timeout\n",
+				wait_ms);
 
 			if (sync_pt_data && mdp5_data && mdp5_data->vsync_timeline) {
-				pr_err("sync_pt_timeline val=%d commit_cnt=%d vsync timeline value =%d,retire count =%d\n",
+				pr_warn_ratelimited("sync_pt val=%d commit_cnt=%d vsync val=%d retire=%d\n",
 						sync_pt_data->timeline_value, atomic_read(&sync_pt_data->commit_cnt),
 						mdp5_data->vsync_timeline->value, mdp5_data->retire_cnt);
 			}
