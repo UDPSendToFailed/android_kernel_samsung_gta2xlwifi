@@ -21,8 +21,11 @@
 #include <linux/vmalloc.h>
 #include <linux/zstd.h>
 
-
-#define ZSTD_DEF_LEVEL	3
+/*
+ * Use level 1 (ZSTD_fast strategy) for best throughput on weak cores.
+ * Level 1 uses a single hash table lookup vs level 3's double-hash (ZSTD_dfast).
+ */
+#define ZSTD_DEF_LEVEL	1
 
 struct zstd_ctx {
 	ZSTD_CCtx *cctx;
@@ -33,7 +36,7 @@ struct zstd_ctx {
 
 static ZSTD_parameters zstd_params(void)
 {
-	return ZSTD_getParams(ZSTD_DEF_LEVEL, 0, 0);
+	return ZSTD_getParams(ZSTD_DEF_LEVEL, PAGE_SIZE, 0);
 }
 
 static int zstd_comp_init(struct zstd_ctx *ctx)
@@ -53,6 +56,42 @@ static int zstd_comp_init(struct zstd_ctx *ctx)
 		ret = -EINVAL;
 		goto out_free;
 	}
+
+	/*
+	 * Pre-configure the CCtx with all compression parameters once.
+	 * On each compress call, we only need a lightweight session reset
+	 * instead of re-setting all parameters from scratch.
+	 */
+	if (ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_compressionLevel, ZSTD_DEF_LEVEL)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_windowLog, params.cParams.windowLog)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_hashLog, params.cParams.hashLog)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_chainLog, params.cParams.chainLog)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_searchLog, params.cParams.searchLog)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_minMatch, params.cParams.minMatch)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_targetLength, params.cParams.targetLength)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_strategy, params.cParams.strategy)) ||
+	    /*
+	     * Disable content size in frame header — zram already knows
+	     * the decompressed size is PAGE_SIZE, so this saves bytes.
+	     */
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_contentSizeFlag, 0)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_checksumFlag, 0)) ||
+	    ZSTD_isError(ZSTD_CCtx_setParameter(ctx->cctx,
+			ZSTD_c_dictIDFlag, 0))) {
+		ret = -EINVAL;
+		goto out_free;
+	}
+
 out:
 	return ret;
 out_free:
@@ -135,9 +174,22 @@ static int __zstd_compress(const u8 *src, unsigned int slen,
 {
 	size_t out_len;
 	struct zstd_ctx *zctx = ctx;
-	const ZSTD_parameters params = zstd_params();
 
-	out_len = zstd_compress_cctx(zctx->cctx, dst, *dlen, src, slen, &params);
+	/*
+	 * Session-only reset: preserves all compression parameters that
+	 * were configured once at init time. This avoids the overhead of
+	 * re-setting windowLog, hashLog, chainLog, searchLog, minMatch,
+	 * targetLength, strategy, contentSizeFlag, checksumFlag, and
+	 * dictIDFlag on every single 4KB page compress.
+	 */
+	if (ZSTD_isError(ZSTD_CCtx_reset(zctx->cctx,
+					  ZSTD_reset_session_only)))
+		return -EINVAL;
+
+	if (ZSTD_isError(ZSTD_CCtx_setPledgedSrcSize(zctx->cctx, slen)))
+		return -EINVAL;
+
+	out_len = ZSTD_compress2(zctx->cctx, dst, *dlen, src, slen);
 	if (ZSTD_isError(out_len))
 		return -EINVAL;
 	*dlen = out_len;
