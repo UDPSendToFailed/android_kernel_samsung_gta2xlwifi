@@ -56,6 +56,7 @@
 #include <linux/mmu_notifier.h>
 #include <linux/migrate.h>
 #include <linux/hugetlb.h>
+#include <linux/prefetch.h>
 #include <linux/backing-dev.h>
 
 #include <asm/tlbflush.h>
@@ -1708,6 +1709,14 @@ static int rmap_walk_anon(struct page *page, struct rmap_walk_control *rwc)
 		if (rwc->invalid_vma && rwc->invalid_vma(vma, rwc->arg))
 			continue;
 
+		/*
+		 * Prefetch the page table root for this VMA's mm_struct.
+		 * __page_check_address() -> mm_find_pmd() will chase
+		 * mm->pgd -> pud -> pmd -> pte, each a potential cache
+		 * miss. Warming up pgd cuts the first miss.
+		 */
+		prefetch(vma->vm_mm->pgd);
+
 		ret = rwc->rmap_one(page, vma, address, rwc->arg);
 		if (ret != SWAP_AGAIN)
 			break;
@@ -1764,6 +1773,10 @@ static int rmap_walk_file(struct page *page, struct rmap_walk_control *rwc)
 
 		if (rwc->invalid_vma && rwc->invalid_vma(vma, rwc->arg))
 			continue;
+
+		/* Prefetch page table root to reduce cache misses in
+		 * __page_check_address() -> mm_find_pmd() page table walk */
+		prefetch(vma->vm_mm->pgd);
 
 		ret = rwc->rmap_one(page, vma, address, rwc->arg);
 		if (ret != SWAP_AGAIN)
