@@ -182,5 +182,12 @@ struct s2mu004_fuelgauge_data {
 		u16 coffset_old;
 		bool coffset_flag;
 		bool probe_done;
+
+		/* Cached values from get_rawsoc to avoid redundant I2C reads */
+		int cached_vbat;
+		int cached_current;
+		int cached_avgcurrent;
+		int cached_avgvbat;
+		unsigned long cache_jiffies;
 };
 #endif /* __S2MU004_FUELGAUGE_H */
