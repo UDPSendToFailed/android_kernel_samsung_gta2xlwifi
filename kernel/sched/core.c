@@ -7420,6 +7420,20 @@ static int _sched_setscheduler(struct task_struct *p, int policy,
 int sched_setscheduler(struct task_struct *p, int policy,
 		       const struct sched_param *param)
 {
+	/* 
+	 * --- CUSTOM JANK ELIMINATION POLICY ---
+	 * If userspace tries to set a CFS (Normal/Batch) policy on our critical
+	 * graphical threads, intercept it and force it back to RT SCHED_FIFO.
+	 */
+	if (!strncmp(p->comm, "hwc", 3) ||
+	    !strncmp(p->comm, "RenderEngine", 12) ||
+	    !strncmp(p->comm, "RenderThread", 12) ||
+	    !strncmp(p->comm, "surfaceflinger", 14)) {
+		
+		struct sched_param rt_param = { .sched_priority = 1 };
+		return _sched_setscheduler(p, SCHED_FIFO, &rt_param, false);
+	}
+
 	return _sched_setscheduler(p, policy, param, true);
 }
 EXPORT_SYMBOL_GPL(sched_setscheduler);

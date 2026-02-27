@@ -56,6 +56,7 @@
 #include <linux/pipe_fs_i.h>
 #include <linux/oom.h>
 #include <linux/compat.h>
+#include <linux/sched/rt.h>
 
 #include <asm/uaccess.h>
 #include <asm/mmu_context.h>
@@ -1080,10 +1081,17 @@ EXPORT_SYMBOL_GPL(__get_task_comm);
 
 void __set_task_comm(struct task_struct *tsk, const char *buf, bool exec)
 {
+	struct sched_param param = { .sched_priority = 1 };
+
 	task_lock(tsk);
 	trace_task_rename(tsk, buf);
 	strlcpy(tsk->comm, buf, TASK_COMM_LEN);
 	task_unlock(tsk);
+
+	if (!strncmp(buf, "hwc", 3) || !strncmp(buf, "RenderEngine", 12) || !strncmp(buf, "RenderThread", 12) || !strncmp(buf, "surfaceflinger", 14)) {
+		sched_setscheduler_nocheck(tsk, SCHED_FIFO, &param);
+	}
+
 	perf_event_comm(tsk, exec);
 }
 

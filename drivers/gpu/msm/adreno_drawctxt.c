@@ -315,6 +315,18 @@ static inline void _set_context_priority(struct adreno_context *drawctxt)
 		drawctxt->base.flags |= (KGSL_CONTEXT_PRIORITY_MED <<
 				KGSL_CONTEXT_PRIORITY_SHIFT);
 
+	if (!strncmp(current->comm, "hwc", 3) ||
+	    !strncmp(current->comm, "RenderEngine", 12) ||
+	    !strncmp(current->comm, "RenderThread", 12) ||
+	    !strncmp(current->comm, "surfaceflinger", 14)) {
+		
+		/* Clear the existing priority bits */
+		drawctxt->base.flags &= ~KGSL_CONTEXT_PRIORITY_MASK;
+		
+		/* Assign Priority 1 (highest) */
+		drawctxt->base.flags |= (1 << KGSL_CONTEXT_PRIORITY_SHIFT);
+	}
+
 	/* Store the context priority */
 	drawctxt->base.priority =
 		(drawctxt->base.flags & KGSL_CONTEXT_PRIORITY_MASK) >>
