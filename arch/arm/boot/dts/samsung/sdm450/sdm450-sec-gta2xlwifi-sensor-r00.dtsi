@@ -24,18 +24,6 @@
 			};
 		};
 
-		sensor_i2c: sensor_i2c {
-			mux {
-				pins = "gpio18", "gpio19";
-				function = "gpio";
-			};
-			config {
-				pins = "gpio18", "gpio19";
-				drive-strength = <2>;
-				bias-disable;
-			};
-		};
-
 		light_i2c: light_i2c {
 			mux {
 				pins = "gpio68", "gpio69";
@@ -70,39 +58,6 @@
 				drive-strength = <2>;
 				bias-disable;
 			};
-		};		
-	};
-
-	i2c_24: i2c@24 { /* SW I2C */
-		cell-index = <24>;
-		compatible = "i2c-gpio";
-		gpios = <&tlmm 18 0 /* sda */
-			&tlmm 19 0 /* scl */
-		>;
-		i2c-gpio,delay-us = <2>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&sensor_i2c>;
-
-		lsm6dsl@6b {
-			compatible = "st,lsm6dsl";
-			reg = <0x6b>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&acc_int>;
-			interrupt-parent = <&tlmm>;
-			interrupts = <42 0>;
-			st,orientation = <1 2 1 2 1 1 1 1 0>;
-			st,drdy-int-pin = <1>;
-			st,irq_gpio = <&tlmm 42 0x00>;
-		};
-
-		yas539@2e {
-			compatible = "yas_magnetometer";
-			reg = <0x2e>;
-			yas,orientation = <5>;
-			yas,softiron = <10200 200 80 200 9780 80 80 80 10020>;
-			yas,softiron_sign = <2 2 0 2 2 0 0 0 2>;
 		};
 	};
 
@@ -167,5 +122,33 @@
 			sx9320,afeph2 = <0x00>;
 			sx9320,afeph3 = <0x04>;			
 		};
+	};
+};
+
+&i2c_5 {
+	status = "ok";
+	pinctrl-names = "i2c_active", "i2c_sleep";
+	pinctrl-0 = <&i2c_5_active>;
+	pinctrl-1 = <&i2c_5_sleep>;
+	qcom,clk-freq-out = <400000>;
+
+	lsm6dsl@6b {
+		compatible = "st,lsm6dsl";
+		reg = <0x6b>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&acc_int>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <42 0>;
+		st,orientation = <1 2 1 2 1 1 1 1 0>;
+		st,drdy-int-pin = <1>;
+		st,irq_gpio = <&tlmm 42 0x00>;
+	};
+
+	yas539@2e {
+		compatible = "yas_magnetometer";
+		reg = <0x2e>;
+		yas,orientation = <5>;
+		yas,softiron = <10200 200 80 200 9780 80 80 80 10020>;
+		yas,softiron_sign = <2 2 0 2 2 0 0 0 2>;
 	};
 };

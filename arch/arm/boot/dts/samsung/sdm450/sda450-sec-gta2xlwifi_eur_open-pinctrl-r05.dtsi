@@ -830,13 +830,13 @@
 				/* suspended state */
 				mux {
 					pins = "gpio18", "gpio19";
-					function = "blsp_i2c5";
+					function = "gpio";
 				};
 
 				config {
 					pins = "gpio18", "gpio19";
 					drive-strength = <2>;
-					bias-disable;
+					bias-pull-down;
 				};
 			};
 		};
