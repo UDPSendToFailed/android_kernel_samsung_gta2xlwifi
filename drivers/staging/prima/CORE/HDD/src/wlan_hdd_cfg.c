@@ -50,6 +50,8 @@
 
 #include <linux/firmware.h>
 #include <linux/string.h>
+#include <linux/fs.h>
+#include <asm/uaccess.h>
 #include <wlan_hdd_includes.h>
 #include <wlan_hdd_main.h>
 #include <wlan_hdd_assoc.h>
@@ -4134,36 +4136,41 @@ typedef struct
 
 VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
 {
-	int status;
-	const struct firmware *fw = NULL;
+	struct file *filp;
 	VOS_STATUS vos_status = VOS_STATUS_E_FAILURE;
 	int ret;
 	char mac_str_buf[32];
-	size_t len_to_copy;
+	int rd_len;
+	mm_segment_t old_fs;
 
-	if (!pHddCtx || !pHddCtx->parent_dev || !pHddCtx->cfg_ini) {
+	if (!pHddCtx || !pHddCtx->cfg_ini) {
 		hddLog(VOS_TRACE_LEVEL_FATAL, FL("Invalid context pointers"));
 		return VOS_STATUS_E_INVAL;
 	}
 
-	status = request_firmware(&fw, WLAN_MAC_FILE, pHddCtx->parent_dev);
-	if (status) {
-		hddLog(VOS_TRACE_LEVEL_WARN, FL("request_firmware failed %d for %s"),
-		       status, WLAN_MAC_FILE);
+	old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	filp = filp_open(WLAN_MAC_FILE, O_RDONLY, 0);
+	if (IS_ERR(filp)) {
+		set_fs(old_fs);
+		hddLog(VOS_TRACE_LEVEL_WARN, FL("Failed to open %s (err %ld)"),
+		       WLAN_MAC_FILE, PTR_ERR(filp));
 		return VOS_STATUS_E_FAILURE;
 	}
 
-	if (fw == NULL || fw->data == NULL || fw->size == 0) {
-		hddLog(VOS_TRACE_LEVEL_FATAL, FL("Invalid firmware data for %s"), WLAN_MAC_FILE);
-		release_firmware(fw);
-		return VOS_STATUS_E_INVAL;
+	rd_len = kernel_read(filp, 0, mac_str_buf, sizeof(mac_str_buf) - 1);
+	filp_close(filp, NULL);
+	set_fs(old_fs);
+
+	if (rd_len <= 0) {
+		hddLog(VOS_TRACE_LEVEL_ERROR, FL("Failed to read %s (len %d)"),
+		       WLAN_MAC_FILE, rd_len);
+		return VOS_STATUS_E_FAILURE;
 	}
 
-	len_to_copy = min_t(size_t, fw->size, sizeof(mac_str_buf) - 1);
-	memcpy(mac_str_buf, fw->data, len_to_copy);
-	mac_str_buf[len_to_copy] = '\0';
-
-	mac_str_buf[strcspn(mac_str_buf, "\n\r")] = 0;
+	mac_str_buf[rd_len] = '\0';
+	mac_str_buf[strcspn(mac_str_buf, "\n\r")] = '\0';
 
 	ret = sscanf(mac_str_buf, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
 		       &pHddCtx->cfg_ini->intfMacAddr[0].bytes[0],
@@ -4186,7 +4193,6 @@ VOS_STATUS hdd_update_mac_config(hdd_context_t *pHddCtx)
 		       mac_str_buf, ret, WLAN_MAC_FILE);
 	}
 
-	release_firmware(fw);
 	return vos_status;
 }
 
