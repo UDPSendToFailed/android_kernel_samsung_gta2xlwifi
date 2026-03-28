@@ -652,6 +652,7 @@ config SND_SOC_RL6231
 	default y if SND_SOC_RT5659=y
 	default y if SND_SOC_RT5660=y
 	default y if SND_SOC_RT5663=y
+	default y if SND_SOC_RT5665=y
 	default y if SND_SOC_RT5670=y
 	default y if SND_SOC_RT5677=y
 	default m if SND_SOC_RT5514=m
@@ -662,6 +663,7 @@ config SND_SOC_RL6231
 	default m if SND_SOC_RT5659=m
 	default m if SND_SOC_RT5660=m
 	default m if SND_SOC_RT5663=m
+	default m if SND_SOC_RT5665=m
 	default m if SND_SOC_RT5670=m
 	default m if SND_SOC_RT5677=m
 
@@ -712,6 +714,10 @@ config SND_SOC_RT5660
 
 config SND_SOC_RT5663
 	tristate
+
+config SND_SOC_RT5665
+	tristate "Realtek RT5665 CODEC"
+	depends on I2C
 
 config SND_SOC_RT5670
 	tristate
@@ -1110,4 +1116,13 @@ config SND_SOC_TFA98XX
 	depends on I2C
 	help
 	Enables support for NXP98xx Smart PA.
+
+config SND_SOC_TFA9896
+        tristate "Support TFA9896"
+        help
+        TFA9896 driver
+
+source "sound/soc/codecs/dbmdx/Kconfig"
+
 endmenu
+
