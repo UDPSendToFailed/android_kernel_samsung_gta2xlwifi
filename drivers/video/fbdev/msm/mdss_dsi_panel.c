@@ -29,6 +29,9 @@
 #include "mdss_dba_utils.h"
 #endif
 #include "mdss_debug.h"
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+#include "samsung/ss_dsi_panel_common.h"
+#endif
 
 #define DT_CMD_HDR 6
 #define DEFAULT_MDP_TRANSFER_TIME 14000
@@ -184,7 +187,7 @@ static void mdss_dsi_panel_apply_settings(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
-static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
 {
 	struct dcs_cmd_req cmdreq;
@@ -230,6 +233,19 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	}
 
 	pr_debug("%s: level=%d\n", __func__, level);
+
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	if (ctrl->cmd_sync_wait_broadcast && !ctrl->cmd_sync_wait_trigger)
+		return;
+	else {
+		if (pinfo->dcs_cmd_by_left && (ctrl->ndx != DSI_CTRL_LEFT))
+			return;
+		else
+			mdss_samsung_brightness_dcs(ctrl, level);
+
+		return;
+	}
+#endif
 
 	led_pwm1[1] = (unsigned char)(level >> 8) & 0x0F;
 	led_pwm1[2] = (unsigned char)level & 0xFF;
@@ -834,20 +850,11 @@ static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 		mdss_dsi_panel_dsc_pps_send(ctrl_pdata, &pdata->panel_info);
 }
 
-static char RDDID[4] = {0x04, 0x00, 0x00, 0x00};
-static struct dsi_cmd_desc cmd_RDDID = {
-	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(RDDID)},
-	RDDID
-};
-int RDDID_HWINFO[3];
-int RDDID_read_count = 0;
-
 static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 							u32 bl_level)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
-	struct dcs_cmd_req cmdreq2;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -856,28 +863,6 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
-
-	if (RDDID_read_count==0) {
-		memset(&cmdreq2, 0, sizeof(cmdreq2));
-		cmdreq2.cmds = &cmd_RDDID;
-		cmdreq2.cmds_cnt = 1;
-		cmdreq2.flags = CMD_REQ_COMMIT | CMD_REQ_RX;;
-		cmdreq2.rlen = 3; //return 3 values
-		cmdreq2.cb = NULL; /* call back */
-		cmdreq2.rbuf = ctrl_pdata->rx_buf.data;
-
-		mdss_dsi_cmdlist_put(ctrl_pdata, &cmdreq2);
-
-		if (ctrl_pdata->rx_buf.len > 0) {
-			RDDID_HWINFO[0]=(int)*(ctrl_pdata->rx_buf.data);
-			RDDID_HWINFO[1]=(int)*(ctrl_pdata->rx_buf.data+1);
-			RDDID_HWINFO[2]=(int)*(ctrl_pdata->rx_buf.data+2);
-			//pr_err("[Jialong] ctrl->rx_buf.data data =0x%x\n",*(ctrl_pdata->rx_buf.data));
-			RDDID_read_count++;
-		}
-	}
-
-	mdelay(1);
 
 	/*
 	 * Some backlight controllers specify a minimum duty cycle
@@ -895,6 +880,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	case BL_PWM:
 		mdss_dsi_panel_bklt_pwm(ctrl_pdata, bl_level);
 		break;
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	case BL_SS_PWM:
+		mdss_samsung_brightness_tft_pwm(ctrl_pdata, bl_level);
+		break;
+#endif
 	case BL_DCS_CMD:
 		if (!mdss_dsi_sync_wait_enable(ctrl_pdata)) {
 			mdss_dsi_panel_bklt_dcs(ctrl_pdata, bl_level);
@@ -965,6 +955,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	mdss_samsung_panel_on_pre(pdata);
+#endif
+
 	on_cmds = &ctrl->on_cmds;
 
 	if ((pinfo->mipi.dms_mode == DYNAMIC_MODE_SWITCH_IMMEDIATE) &&
@@ -977,8 +971,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
 
+#if !defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
 	if (pinfo->compression_mode == COMPRESSION_DSC)
 		mdss_dsi_panel_dsc_pps_send(ctrl, pinfo);
+#endif
 
 	mdss_dsi_panel_on_hdmi(ctrl, pinfo);
 
@@ -986,6 +982,11 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	mdss_dsi_panel_apply_display_setting(pdata, pinfo->persist_mode);
 
 end:
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+	mdss_samsung_panel_on_post(pdata);
+	pinfo->panel_state = true;
+#endif
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
@@ -1081,8 +1082,18 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	mdss_samsung_panel_off_pre(pdata);
+	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
+#endif
+
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds, CMD_REQ_COMMIT);
+
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	mdss_samsung_panel_off_post(pdata);
+	pinfo->panel_state = false;
+#endif
 
 	mdss_dsi_panel_off_hdmi(ctrl, pinfo);
 
@@ -1183,7 +1194,7 @@ static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 }
 
 
-static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
+int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
 {
 	const char *data;
@@ -1270,6 +1281,47 @@ exit_free:
 	kfree(buf);
 	return -ENOMEM;
 }
+
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+int mdss_samsung_parse_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+{
+	return mdss_dsi_parse_dcs_cmds(np, pcmds, cmd_key, link_key);
+}
+
+u32 mdss_samsung_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl,
+		struct dsi_panel_cmds *pcmds, int read_size)
+{
+	struct dcs_cmd_req cmdreq;
+	struct mdss_panel_info *pinfo;
+	struct samsung_display_driver_data *vdd = samsung_get_vdd();
+
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (pinfo->dcs_cmd_by_left) {
+		if (ctrl->ndx != DSI_CTRL_LEFT)
+			return -EINVAL;
+	}
+
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = pcmds->cmds;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+
+	if (vdd->poc_operation)
+		cmdreq.flags |= CMD_REQ_DMA_TPG;
+
+	if (read_size)
+		cmdreq.rlen = read_size;
+	else
+		cmdreq.rlen = pcmds->read_size[0];
+
+	cmdreq.rbuf = ctrl->rx_buf.data;
+	cmdreq.cb = NULL;
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+
+	return ctrl->rx_buf.len;
+}
+#endif
 
 
 int mdss_panel_get_dst_fmt(u32 bpp, char mipi_mode, u32 pixel_packing,
@@ -2431,6 +2483,13 @@ int mdss_panel_parse_bl_settings(struct device_node *np,
 			pr_debug("%s: Configured DCS_CMD bklt ctrl\n",
 								__func__);
 		}
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+		else if (!strncmp(data, "bl_ctrl_ss_pwm", 14)) {
+			ctrl_pdata->bklt_ctrl = BL_SS_PWM;
+			pr_debug("%s: Configured BL_SS_PWM bklt ctrl\n",
+								__func__);
+		}
+#endif
 	}
 	return 0;
 }

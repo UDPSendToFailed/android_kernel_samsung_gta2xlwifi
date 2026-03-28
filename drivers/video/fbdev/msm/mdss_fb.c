@@ -2019,12 +2019,14 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 				(mfd->unset_bl_level != U32_MAX))
 				mdss_fb_set_backlight(mfd, mfd->unset_bl_level);
 
+#if !defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
 			/*
 			 * it blocks the backlight update between unblank and
 			 * first kickoff to avoid backlight turn on before black
 			 * frame is transferred to panel through unblank call.
 			 */
 			mfd->allow_bl_update = false;
+#endif
 		}
 		mutex_unlock(&mfd->bl_lock);
 	}

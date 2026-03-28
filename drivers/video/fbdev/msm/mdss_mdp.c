@@ -100,7 +100,7 @@ static struct mdss_panel_intf pan_types[] = {
 	{"hdmi", MDSS_PANEL_INTF_HDMI},
 	{"spi", MDSS_PANEL_INTF_SPI},
 };
-static char mdss_mdp_panel[MDSS_MAX_PANEL_LEN];
+char mdss_mdp_panel[MDSS_MAX_PANEL_LEN];
 
 struct mdss_hw mdss_mdp_hw = {
 	.hw_ndx = MDSS_HW_MDP,

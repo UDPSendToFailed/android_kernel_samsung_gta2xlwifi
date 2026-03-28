@@ -36,6 +36,9 @@
 #include "mdss_dsi_phy.h"
 #include "mdss_dba_utils.h"
 #include "mdss_smmu.h"
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+#include "samsung/ss_dsi_panel_common.h"
+#endif
 
 #include <linux/proc_fs.h>
 
@@ -193,7 +196,7 @@ static void mdss_dsi_pm_qos_update_request(int val)
 static int mdss_dsi_pinctrl_set_state(struct mdss_dsi_ctrl_pdata *ctrl_pdata,
 					bool active);
 
-static struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl(u32 ctrl_id)
+struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl(u32 ctrl_id)
 {
 	if (ctrl_id >= DSI_CTRL_MAX || !mdss_dsi_res)
 		return NULL;
@@ -2886,6 +2889,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		if (!fbi || !fbi->dev)
 			break;
 
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+		mdss_samsung_dsi_panel_registered(pdata);
+#endif
+
 		ctrl_pdata->kobj = &fbi->dev->kobj;
 		ctrl_pdata->fb_node = fbi->node;
 
@@ -2896,6 +2903,10 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		}
 		break;
 	default:
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+		if (ctrl_pdata->event_handler)
+			rc = ctrl_pdata->event_handler(pdata, event, arg);
+#endif
 		pr_debug("%s: unhandled event=%d\n", __func__, event);
 		break;
 	}
@@ -3302,71 +3313,6 @@ end:
 	return rc;
 }
 
-extern void seq_printf(struct seq_file *m, const char *f, ...);
-extern int single_open(struct file *, int (*)(struct seq_file *, void *), void *);
-extern ssize_t seq_read(struct file *, char __user *, size_t, loff_t *);
-extern loff_t seq_lseek(struct file *, loff_t, int);
-extern int single_release(struct inode *, struct file *);
-
-static int proc_lcm_vendor_show(struct seq_file *m, void *v)
-{
-	int lcm_id;
-
-	lcm_id = gpio_request(59, "lcm_id");
-
-	if (lcm_id == 1) {
-		// For another's LCM module
-		seq_printf(m, "2nd LCM\n");
-	} else {
-		// DJN's LCM module id is 0.
-		seq_printf(m, "DJN , HX83112B\n");
-	}
-
-	return 0;
-}
-
-static int proc_lcm_vendor_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, proc_lcm_vendor_show, NULL);
-}
-
-static const struct file_operations proc_lcm_vendor_fops = {
-	.open = proc_lcm_vendor_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
-static int proc_lcm_revision_show(struct seq_file *m, void *v)
-{
-	int lcm_id;
-	extern int RDDID_HWINFO[3];
-
-	lcm_id = gpio_request(59, "lcm_id");
-
-	if (lcm_id == 1) {
-		// For another's LCM module
-		seq_printf(m, "2nd Source not ready.\n");
-	} else {
-		// DJN's LCM module id is 0.
-		seq_printf(m, "DJN , HX%x%x%x\n", RDDID_HWINFO[0], RDDID_HWINFO[1], RDDID_HWINFO[2]);
-	}
-
-	return 0;
-}
-
-static int proc_lcm_revision_fops_open(struct inode *inode, struct file *file)
-{
-	return single_open(file, proc_lcm_revision_show, NULL);
-}
-
-static const struct file_operations proc_lcm_revision_fops = {
-	.open = proc_lcm_revision_fops_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
 static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -3557,10 +3503,6 @@ static int mdss_dsi_ctrl_probe(struct platform_device *pdev)
 		ctrl_pdata->shared_data->dsi1_active = true;
 
 	mdss_dsi_debug_bus_init(mdss_dsi_res);
-
-	proc_create("lcm_vendor", 0, NULL, &proc_lcm_vendor_fops);
-
-	proc_create("lcm_revision", 0666, NULL, &proc_lcm_revision_fops);
 
 	return 0;
 
@@ -4530,6 +4472,23 @@ int dsi_panel_device_register(struct platform_device *ctrl_pdev,
 
 	panel_debug_register_base("panel",
 		ctrl_pdata->ctrl_base, ctrl_pdata->reg_size);
+
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	/*
+	 * Below function should be executed after mdss_dsi_ctrl_init().
+	 * mdss_dsi_ctrl_init() gets DSI ctrl handle number.
+	 */
+	mdss_samsung_panel_init(pan_node, ctrl_pdata);
+	mdss_samsung_panel_parse_dt(pan_node, ctrl_pdata);
+
+	if (pinfo->cont_splash_enabled) {
+		pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
+		pinfo->panel_state = true;
+	} else {
+		pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
+		pinfo->panel_state = false;
+	}
+#endif
 
 	pr_debug("%s: Panel data initialized\n", __func__);
 	return 0;
