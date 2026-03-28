@@ -99,6 +99,9 @@ enum dsi_panel_bl_ctrl {
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	BL_SS_PWM,
+#endif
 	UNKNOWN_CTRL,
 };
 
@@ -107,6 +110,9 @@ enum dsi_panel_status_mode {
 	ESD_BTA,
 	ESD_REG,
 	ESD_REG_NT35596,
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	ESD_REG_IRQ,
+#endif
 	ESD_TE,
 	ESD_MAX,
 };
@@ -336,6 +342,11 @@ struct dsi_panel_cmds {
 	struct dsi_cmd_desc *cmds;
 	int cmd_cnt;
 	int link_state;
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	char *read_size;
+	char *read_startoffset;
+	char *name;
+#endif
 };
 
 struct dsi_panel_timing {
@@ -411,6 +422,9 @@ struct mdss_dsi_ctrl_pdata {
 	int (*check_read_status)(struct mdss_dsi_ctrl_pdata *pdata);
 	int (*cmdlist_commit)(struct mdss_dsi_ctrl_pdata *ctrl, int from_mdp);
 	void (*switch_mode)(struct mdss_panel_data *pdata, int mode);
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+	int (*event_handler)(struct mdss_panel_data *pdata, int event, void *arg);
+#endif
 	struct mdss_panel_data panel_data;
 	unsigned char __iomem *ctrl_base;
 	struct mdss_io_data ctrl_io;
@@ -913,4 +927,11 @@ static inline bool mdss_dsi_cmp_panel_reg(struct dsi_buf status_buf,
 	return status_buf.data[i] == status_val[i];
 }
 
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+int mdss_samsung_parse_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key);
+u32 mdss_samsung_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl,
+		struct dsi_panel_cmds *pcmds, int read_size);
+struct mdss_dsi_ctrl_pdata *mdss_dsi_get_ctrl(u32 ctrl_id);
+#endif
 #endif /* MDSS_DSI_H */

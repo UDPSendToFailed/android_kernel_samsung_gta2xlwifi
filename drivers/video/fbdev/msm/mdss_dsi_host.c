@@ -29,9 +29,16 @@
 #include "mdss_debug.h"
 #include "mdss_smmu.h"
 #include "mdss_dsi_phy.h"
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+#include "samsung/ss_dsi_panel_common.h"
+#endif
 
 #define VSYNC_PERIOD 17
+#if defined(CONFIG_FB_MSM_MDSS_SAMSUNG)
+#define DMA_TX_TIMEOUT 1000
+#else
 #define DMA_TX_TIMEOUT 200
+#endif
 #define DMA_TPG_FIFO_LEN 64
 
 #define FIFO_STATUS	0x0C
