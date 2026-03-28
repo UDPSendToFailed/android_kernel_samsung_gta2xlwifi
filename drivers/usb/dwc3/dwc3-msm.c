@@ -62,6 +62,11 @@
 #include "../../misc/vxr7200.h"
 #endif
 
+#if defined(CONFIG_CCIC_ALTERNATE_MODE)
+#include <linux/sec_class.h>
+static struct device *msm_dwc3;
+static int speed_setting;
+#endif
 
 #define SDP_CONNETION_CHECK_TIME 10000 /* in ms */
 
@@ -3506,6 +3511,75 @@ release_mapping:
 	return ret;
 }
 
+#if defined(CONFIG_CCIC_ALTERNATE_MODE)
+void dwc3_max_speed_setting(int speed)
+{
+	speed_setting = speed;
+}
+EXPORT_SYMBOL(dwc3_max_speed_setting);
+
+int dwc_msm_id_event(bool enable)
+{
+	struct dwc3_msm *mdwc;
+	struct dwc3 *dwc;
+	enum dwc3_id_state id;
+
+	if (!msm_dwc3)
+		return -ENODEV;
+
+	mdwc = dev_get_drvdata(msm_dwc3);
+	if (!mdwc)
+		return -ENODEV;
+
+	dwc = platform_get_drvdata(mdwc->dwc3);
+	id = enable ? DWC3_ID_GROUND : DWC3_ID_FLOAT;
+
+	dev_info(mdwc->dev, "%s: enable=%d id=%d\n", __func__, enable, id);
+
+	dwc->maximum_speed = USB_SPEED_HIGH;
+
+	if (mdwc->id_state != id) {
+		mdwc->id_state = id;
+		dbg_event(0xFF, "id_state", mdwc->id_state);
+		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+	}
+
+	return NOTIFY_DONE;
+}
+EXPORT_SYMBOL(dwc_msm_id_event);
+
+int dwc_msm_vbus_event(bool enable)
+{
+	struct dwc3_msm *mdwc;
+	struct dwc3 *dwc;
+
+	if (!msm_dwc3)
+		return -ENODEV;
+
+	mdwc = dev_get_drvdata(msm_dwc3);
+	if (!mdwc)
+		return -ENODEV;
+
+	dwc = platform_get_drvdata(mdwc->dwc3);
+
+	dev_info(mdwc->dev, "%s: enable=%d\n", __func__, enable);
+
+	if (mdwc->vbus_active == enable)
+		return NOTIFY_DONE;
+
+	dwc->maximum_speed = USB_SPEED_HIGH;
+	mdwc->vbus_active = enable;
+
+	if (dwc->is_drd && !mdwc->in_restart) {
+		dbg_event(0xFF, "Q RW (vbus)", mdwc->vbus_active);
+		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
+	}
+
+	return NOTIFY_DONE;
+}
+EXPORT_SYMBOL(dwc_msm_vbus_event);
+#endif
+
 static ssize_t mode_show(struct device *dev, struct device_attribute *attr,
 		char *buf)
 {
@@ -3692,6 +3766,11 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, mdwc);
 	mdwc->dev = &pdev->dev;
+
+#if defined(CONFIG_CCIC_ALTERNATE_MODE)
+	if (msm_dwc3)
+		dev_set_drvdata(msm_dwc3, mdwc);
+#endif
 
 	INIT_LIST_HEAD(&mdwc->req_complete_list);
 	INIT_WORK(&mdwc->resume_work, dwc3_resume_work);
@@ -4466,7 +4545,7 @@ static int dwc3_otg_start_peripheral(struct dwc3_msm *mdwc, int on)
 		atomic_read(&mdwc->dev->power.usage_count));
 
 	if (on) {
-		dev_dbg(mdwc->dev, "%s: turn on gadget %s\n",
+		dev_info(mdwc->dev, "%s: turn on gadget %s\n",
 					__func__, dwc->gadget.name);
 
 		dwc3_override_vbus_status(mdwc, true);
@@ -5014,6 +5093,11 @@ MODULE_DESCRIPTION("DesignWare USB3 MSM Glue Layer");
 
 static int dwc3_msm_init(void)
 {
+#if defined(CONFIG_CCIC_ALTERNATE_MODE)
+	msm_dwc3 = sec_device_create(0, NULL, "msm_dwc3");
+	if (IS_ERR(msm_dwc3))
+		pr_err("%s: Failed to create msm_dwc3 device\n", __func__);
+#endif
 	return platform_driver_register(&dwc3_msm_driver);
 }
 module_init(dwc3_msm_init);

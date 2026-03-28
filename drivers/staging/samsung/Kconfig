@@ -1,0 +1,5 @@
+menu "Samsung staging drivers"
+
+source "drivers/staging/samsung/sec_notifier/Kconfig"
+
+endmenu
