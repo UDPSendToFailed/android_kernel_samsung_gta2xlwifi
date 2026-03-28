@@ -47,20 +47,22 @@ static ssize_t power_supply_show_property(struct device *dev,
 		"Unknown", "Battery", "UPS", "Mains", "USB", "USB_DCP",
 		"USB_CDP", "USB_ACA", "USB_HVDCP", "USB_HVDCP_3", "USB_PD",
 		"Wireless", "USB_FLOAT", "BMS", "Parallel", "Main", "Wipower",
-		"TYPEC", "TYPEC_UFP", "TYPEC_DFP"
+		"TYPEC", "TYPEC_UFP", "TYPEC_DFP",
+		"POWER_SHARING", "OTG", "POGO"
 	};
 	static char *status_text[] = {
 		"Unknown", "Charging", "Discharging", "Not charging", "Full"
 	};
 	static char *charge_type[] = {
 		"Unknown", "N/A", "Trickle", "Fast",
-		"Taper"
+		"Taper", "Slow"
 	};
 	static char *health_text[] = {
 		"Unknown", "Good", "Overheat", "Dead", "Over voltage",
 		"Unspecified failure", "Cold", "Watchdog timer expire",
 		"Safety timer expire",
-		"Warm", "Cool", "Hot"
+		"Warm", "Cool", "Hot",
+		"Under voltage", "OverheatLimit"
 	};
 	static char *technology_text[] = {
 		"Unknown", "NiMH", "Li-ion", "Li-poly", "LiFe", "NiCd",
@@ -139,7 +141,8 @@ static ssize_t power_supply_show_property(struct device *dev,
 	else if (off == POWER_SUPPLY_PROP_CONNECTOR_HEALTH)
 		return scnprintf(buf, PAGE_SIZE, "%s\n",
 				health_text[value.intval]);
-	else if (off >= POWER_SUPPLY_PROP_MODEL_NAME)
+	else if (off >= POWER_SUPPLY_PROP_MODEL_NAME &&
+			off <= POWER_SUPPLY_PROP_CYCLE_COUNTS)
 		return scnprintf(buf, PAGE_SIZE, "%s\n",
 				value.strval);
 
@@ -352,6 +355,20 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(serial_number),
 	POWER_SUPPLY_ATTR(battery_type),
 	POWER_SUPPLY_ATTR(cycle_counts),
+	/* Samsung extensions */
+	POWER_SUPPLY_ATTR(charge_otg_control),
+	POWER_SUPPLY_ATTR(charge_powered_otg_control),
+	POWER_SUPPLY_ATTR(charge_uno_control),
+	POWER_SUPPLY_ATTR(charge_enabled),
+	POWER_SUPPLY_ATTR(current_full),
+	POWER_SUPPLY_ATTR(afc_charger_mode),
+	POWER_SUPPLY_ATTR(usb_configure),
+	POWER_SUPPLY_ATTR(multi_charger_mode),
+	POWER_SUPPLY_ATTR(power_design),
+	POWER_SUPPLY_ATTR(filter_cfg),
+	POWER_SUPPLY_ATTR(enable_aicl),
+	POWER_SUPPLY_ATTR(allow_detection),
+	POWER_SUPPLY_ATTR(read_slave_reg),
 };
 
 static struct attribute *
