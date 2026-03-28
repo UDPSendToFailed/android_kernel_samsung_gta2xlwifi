@@ -227,6 +227,13 @@ source "drivers/input/sensors/smi130/Kconfig"
 
 source "drivers/input/rmi4/Kconfig"
 
+config SENSORS_HALL
+	bool "Hall sensor"
+	depends on INPUT
+	---help---
+	 Say y here if you want to use this hall sensor driver, it
+	 is like a switch. For example, lid.
+
 endif
 
 menu "Hardware I/O ports"
