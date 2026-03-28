@@ -1,0 +1,15 @@
+config SAMSUNG_PRODUCT_SHIP
+	bool "set up for product shipping"
+	default n
+
+config SEC_BSP
+	bool "Samsung BSP Feature"
+	default n
+	help
+	  Samsung BSP Feature.
+
+config DRV_SAMSUNG
+	bool "Samsung sec class/sysfs Feature"
+	default n
+	help
+	  Samsung sysfs name 'sec' directory create
