@@ -191,4 +191,9 @@ config USB_ULPI_BUS
 	  To compile this driver as a module, choose M here: the module will
 	  be called ulpi.
 
+source "drivers/usb/notify/Kconfig"
+
+source "drivers/usb/manager/Kconfig"
+
 endif # USB_SUPPORT
+
