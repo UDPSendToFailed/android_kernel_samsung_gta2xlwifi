@@ -9907,3 +9907,7 @@ void voice_exit(void)
 	voice_delete_cal_data();
 	free_cal_map_table();
 }
+struct common_data *voice_get_common_data(void)
+{
+        return &common;
+}
