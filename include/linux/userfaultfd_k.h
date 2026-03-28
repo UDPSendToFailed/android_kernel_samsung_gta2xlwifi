@@ -30,10 +30,20 @@
 extern int handle_userfault(struct fault_env *fe, unsigned long reason);
 
 extern ssize_t mcopy_atomic(struct mm_struct *dst_mm, unsigned long dst_start,
-			    unsigned long src_start, unsigned long len);
+			    unsigned long src_start, unsigned long len,
+			    bool mmap_trylock);
 extern ssize_t mfill_zeropage(struct mm_struct *dst_mm,
 			      unsigned long dst_start,
-			      unsigned long len);
+			      unsigned long len,
+			      bool mmap_trylock);
+
+/* move_pages */
+struct userfaultfd_ctx;
+void double_pt_lock(spinlock_t *ptl1, spinlock_t *ptl2);
+void double_pt_unlock(spinlock_t *ptl1, spinlock_t *ptl2);
+extern ssize_t move_pages(struct userfaultfd_ctx *ctx, struct mm_struct *mm,
+			  unsigned long dst_start, unsigned long src_start,
+			  unsigned long len, __u64 mode);
 
 /* mm helpers */
 static inline bool is_mergeable_vm_userfaultfd_ctx(struct vm_area_struct *vma,

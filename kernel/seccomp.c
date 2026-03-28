@@ -193,6 +193,15 @@ static u32 seccomp_run_filters(const struct seccomp_data *sd)
 	}
 
 	/*
+	 * Allow UFFDIO_MOVE ioctl (0xc028aa05) through seccomp for ART's
+	 * userfaultfd-based GC compaction.  Handle both native (29) and
+	 * compat (54) ioctl syscall numbers.
+	 */
+	if ((sd->nr == __NR_ioctl || sd->nr == 54) &&
+	    sd->args[1] == 0xc028aa05)
+		return SECCOMP_RET_ALLOW;
+
+	/*
 	 * All filters in the list are evaluated and the lowest BPF return
 	 * value always takes priority (ignoring the DATA).
 	 */

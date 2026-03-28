@@ -17,7 +17,7 @@
  * #define UFFD_API_FEATURES (UFFD_FEATURE_PAGEFAULT_FLAG_WP | \
  *			      UFFD_FEATURE_EVENT_FORK)
  */
-#define UFFD_API_FEATURES (0)
+#define UFFD_API_FEATURES (UFFD_FEATURE_SIGBUS | UFFD_FEATURE_MOVE)
 #define UFFD_API_IOCTLS				\
 	((__u64)1 << _UFFDIO_REGISTER |		\
 	 (__u64)1 << _UFFDIO_UNREGISTER |	\
@@ -25,7 +25,8 @@
 #define UFFD_API_RANGE_IOCTLS			\
 	((__u64)1 << _UFFDIO_WAKE |		\
 	 (__u64)1 << _UFFDIO_COPY |		\
-	 (__u64)1 << _UFFDIO_ZEROPAGE)
+	 (__u64)1 << _UFFDIO_ZEROPAGE |		\
+	 (__u64)1 << _UFFDIO_MOVE)
 
 /*
  * Valid ioctl command number range with this API is from 0x00 to
@@ -40,6 +41,7 @@
 #define _UFFDIO_WAKE			(0x02)
 #define _UFFDIO_COPY			(0x03)
 #define _UFFDIO_ZEROPAGE		(0x04)
+#define _UFFDIO_MOVE			(0x05)
 #define _UFFDIO_API			(0x3F)
 
 /* userfaultfd ioctl ids */
@@ -56,6 +58,8 @@
 				      struct uffdio_copy)
 #define UFFDIO_ZEROPAGE		_IOWR(UFFDIO, _UFFDIO_ZEROPAGE,	\
 				      struct uffdio_zeropage)
+#define UFFDIO_MOVE		_IOWR(UFFDIO, _UFFDIO_MOVE,	\
+				      struct uffdio_move)
 
 /* read() structure */
 struct uffd_msg {
@@ -109,6 +113,8 @@ struct uffdio_api {
 #define UFFD_FEATURE_PAGEFAULT_FLAG_WP		(1<<0)
 #define UFFD_FEATURE_EVENT_FORK			(1<<1)
 #endif
+#define UFFD_FEATURE_SIGBUS			(1<<7)
+#define UFFD_FEATURE_MOVE			(1<<16)
 	__u64 features;
 
 	__u64 ioctls;
@@ -143,6 +149,7 @@ struct uffdio_copy {
 	 * range according to the uffdio_register.ioctls.
 	 */
 #define UFFDIO_COPY_MODE_DONTWAKE		((__u64)1<<0)
+#define UFFDIO_COPY_MODE_MMAP_TRYLOCK		((__u64)1<<63)
 	__u64 mode;
 
 	/*
@@ -155,6 +162,7 @@ struct uffdio_copy {
 struct uffdio_zeropage {
 	struct uffdio_range range;
 #define UFFDIO_ZEROPAGE_MODE_DONTWAKE		((__u64)1<<0)
+#define UFFDIO_ZEROPAGE_MODE_MMAP_TRYLOCK	((__u64)1<<63)
 	__u64 mode;
 
 	/*
@@ -162,6 +170,20 @@ struct uffdio_zeropage {
 	 * the copy_from_user will not read the last 8 bytes.
 	 */
 	__s64 zeropage;
+};
+
+struct uffdio_move {
+	__u64 dst;
+	__u64 src;
+	__u64 len;
+#define UFFDIO_MOVE_MODE_DONTWAKE		((__u64)1<<0)
+#define UFFDIO_MOVE_MODE_ALLOW_SRC_HOLES	((__u64)1<<1)
+	__u64 mode;
+	/*
+	 * "move" is written by the ioctl and must be at the end:
+	 * the copy_from_user will not read the last 8 bytes.
+	 */
+	__s64 move;
 };
 
 #endif /* _LINUX_USERFAULTFD_H */
