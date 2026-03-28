@@ -1011,11 +1011,11 @@ static int create_extcon_class(void)
 			return PTR_ERR(extcon_class);
 		extcon_class->dev_groups = extcon_groups;
 
-#if defined(CONFIG_ANDROID)
+#if defined(CONFIG_ANDROID) && !defined(CONFIG_SWITCH)
 		switch_class = class_compat_register("switch");
 		if (WARN(!switch_class, "cannot allocate"))
 			return -ENOMEM;
-#endif /* CONFIG_ANDROID */
+#endif /* CONFIG_ANDROID && !CONFIG_SWITCH */
 	}
 
 	return 0;
@@ -1408,7 +1408,7 @@ module_init(extcon_class_init);
 
 static void __exit extcon_class_exit(void)
 {
-#if defined(CONFIG_ANDROID)
+#if defined(CONFIG_ANDROID) && !defined(CONFIG_SWITCH)
 	class_compat_unregister(switch_class);
 #endif
 	class_destroy(extcon_class);
