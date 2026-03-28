@@ -1231,6 +1231,11 @@ config GPIO_VIPERBOARD
           River Tech's viperboard.h for detailed meaning
           of the module parameters.
 
+config GPIO_PCAL6416A
+	bool "PCAL6416A GPIO expander"
+	help
+	  GPIO driver for PCAL6416A I2C-based GPIO expander.
+
 endmenu
 
 endif

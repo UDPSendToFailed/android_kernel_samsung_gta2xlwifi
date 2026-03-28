@@ -173,3 +173,5 @@ obj-$(CONFIG_PMBUS)		+= pmbus/
 
 ccflags-$(CONFIG_HWMON_DEBUG_CHIP) := -DDEBUG
 
+obj-$(CONFIG_SEC_THERMISTOR)	+= sec_thermistor.o
+
