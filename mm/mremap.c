@@ -250,7 +250,8 @@ unsigned long move_page_tables(struct vm_area_struct *vma,
 
 static unsigned long move_vma(struct vm_area_struct *vma,
 		unsigned long old_addr, unsigned long old_len,
-		unsigned long new_len, unsigned long new_addr, bool *locked)
+		unsigned long new_len, unsigned long new_addr,
+		bool *locked, unsigned long flags)
 {
 	struct mm_struct *mm = vma->vm_mm;
 	struct vm_area_struct *new_vma;
@@ -327,7 +328,8 @@ static unsigned long move_vma(struct vm_area_struct *vma,
 	vm_raw_write_end(new_vma);
 
 	/* Conceal VM_ACCOUNT so old reservation is not undone */
-	if (vm_flags & VM_ACCOUNT) {
+	if (vm_flags & VM_ACCOUNT &&
+	    (!(flags & MREMAP_DONTUNMAP) || err)) {
 		vma->vm_flags &= ~VM_ACCOUNT;
 		excess = vma->vm_end - vma->vm_start - old_len;
 		if (old_addr > vma->vm_start &&
@@ -351,10 +353,34 @@ static unsigned long move_vma(struct vm_area_struct *vma,
 	if (unlikely(vma->vm_flags & VM_PFNMAP))
 		untrack_pfn_moved(vma);
 
-	if (do_munmap(mm, old_addr, old_len) < 0) {
-		/* OOM: unable to split vma, just get accounts right */
-		vm_unacct_memory(excess >> PAGE_SHIFT);
-		excess = 0;
+	if ((flags & MREMAP_DONTUNMAP) && !err) {
+		/*
+		 * MREMAP_DONTUNMAP: keep the old VMA but the page tables
+		 * have already been moved by move_page_tables(), so the
+		 * old range is now an empty anonymous mapping suitable for
+		 * userfaultfd registration.
+		 *
+		 * The destination VMA (new_vma) must not inherit userfaultfd
+		 * context from the source, otherwise page faults on the
+		 * destination (e.g. after madvise DONTNEED) would be routed
+		 * through the source's userfaultfd instead of being resolved
+		 * normally.
+		 */
+#ifdef CONFIG_USERFAULTFD_DEBUG
+		pr_warn_ratelimited("UFFD-DBG: mremap DONTUNMAP (pid=%d comm=%s old=0x%lx new=0x%lx len=0x%lx old_uffd=%d new_uffd=%d)\n",
+			current->pid, current->comm,
+			old_addr, new_addr, old_len,
+			!!vma->vm_userfaultfd_ctx.ctx,
+			!!new_vma->vm_userfaultfd_ctx.ctx);
+#endif
+		new_vma->vm_userfaultfd_ctx = NULL_VM_UFFD_CTX;
+		new_vma->vm_flags &= ~(VM_UFFD_WP | VM_UFFD_MISSING);
+	} else {
+		if (do_munmap(mm, old_addr, old_len) < 0) {
+			/* OOM: unable to split vma, just get accounts right */
+			vm_unacct_memory(excess >> PAGE_SHIFT);
+			excess = 0;
+		}
 	}
 	mm->hiwater_vm = hiwater_vm;
 
@@ -426,7 +452,8 @@ static struct vm_area_struct *vma_to_resize(unsigned long addr,
 }
 
 static unsigned long mremap_to(unsigned long addr, unsigned long old_len,
-		unsigned long new_addr, unsigned long new_len, bool *locked)
+		unsigned long new_addr, unsigned long new_len,
+		bool *locked, unsigned long flags)
 {
 	struct mm_struct *mm = current->mm;
 	struct vm_area_struct *vma;
@@ -461,6 +488,13 @@ static unsigned long mremap_to(unsigned long addr, unsigned long old_len,
 		goto out;
 	}
 
+	/* MREMAP_DONTUNMAP is only supported on anonymous private VMAs */
+	if ((flags & MREMAP_DONTUNMAP) &&
+	    (vma->vm_flags & (VM_SHARED | VM_MAYSHARE))) {
+		ret = -EINVAL;
+		goto out1;
+	}
+
 	map_flags = MAP_FIXED;
 	if (vma->vm_flags & VM_MAYSHARE)
 		map_flags |= MAP_SHARED;
@@ -471,7 +505,7 @@ static unsigned long mremap_to(unsigned long addr, unsigned long old_len,
 	if (offset_in_page(ret))
 		goto out1;
 
-	ret = move_vma(vma, addr, old_len, new_len, new_addr, locked);
+	ret = move_vma(vma, addr, old_len, new_len, new_addr, locked, flags);
 	if (!(offset_in_page(ret)))
 		goto out;
 out1:
@@ -511,10 +545,14 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 	unsigned long charged = 0;
 	bool locked = false;
 
-	if (flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE))
+	if (flags & ~(MREMAP_FIXED | MREMAP_MAYMOVE | MREMAP_DONTUNMAP))
 		return ret;
 
 	if (flags & MREMAP_FIXED && !(flags & MREMAP_MAYMOVE))
+		return ret;
+
+	/* MREMAP_DONTUNMAP requires MREMAP_MAYMOVE */
+	if (flags & MREMAP_DONTUNMAP && !(flags & MREMAP_MAYMOVE))
 		return ret;
 
 	if (offset_in_page(addr))
@@ -536,7 +574,7 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 
 	if (flags & MREMAP_FIXED) {
 		ret = mremap_to(addr, old_len, new_addr, new_len,
-				&locked);
+				&locked, flags);
 		goto out;
 	}
 
@@ -605,7 +643,8 @@ SYSCALL_DEFINE5(mremap, unsigned long, addr, unsigned long, old_len,
 			goto out;
 		}
 
-		ret = move_vma(vma, addr, old_len, new_len, new_addr, &locked);
+		ret = move_vma(vma, addr, old_len, new_len, new_addr,
+			       &locked, flags);
 	}
 out:
 	if (offset_in_page(ret)) {

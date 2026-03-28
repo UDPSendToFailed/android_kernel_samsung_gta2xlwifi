@@ -1865,6 +1865,16 @@ config USERFAULTFD
 	  Enable the userfaultfd() system call that allows to intercept and
 	  handle page faults in userland.
 
+config USERFAULTFD_DEBUG
+	bool "Userfaultfd verbose debug logging"
+	depends on USERFAULTFD
+	default n
+	help
+	  Enable verbose pr_warn() tracing for userfaultfd operations
+	  including UFFDIO_COPY, UFFDIO_ZEROPAGE, UFFDIO_MOVE, SIGBUS
+	  delivery, register/unregister, and API negotiation.  Useful
+	  for bringup; should be disabled in production.
+
 config PCI_QUIRKS
 	default y
 	bool "Enable PCI quirk workarounds" if EXPERT

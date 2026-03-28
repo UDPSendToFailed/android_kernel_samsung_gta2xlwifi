@@ -27,6 +27,9 @@
 #include <linux/ioctl.h>
 #include <linux/security.h>
 
+/* Accept but ignore: 4.9 has no unprivileged userfaultfd distinction */
+#define UFFD_USER_MODE_ONLY 1
+
 static struct kmem_cache *userfaultfd_ctx_cachep __read_mostly;
 
 enum userfaultfd_state {
@@ -51,6 +54,8 @@ struct userfaultfd_ctx {
 	atomic_t refcount;
 	/* userfaultfd syscall flags */
 	unsigned int flags;
+	/* negotiated API features (UFFD_FEATURE_*) */
+	unsigned int features;
 	/* state machine */
 	enum userfaultfd_state state;
 	/* released */
@@ -281,6 +286,22 @@ int handle_userfault(struct fault_env *fe, unsigned long reason)
 		goto out;
 
 	BUG_ON(ctx->mm != mm);
+
+	/*
+	 * UFFD_FEATURE_SIGBUS: deliver SIGBUS to the faulting thread
+	 * instead of blocking until the fault is resolved.
+	 */
+	if (ctx->features & UFFD_FEATURE_SIGBUS) {
+#ifdef CONFIG_USERFAULTFD_DEBUG
+		extern atomic_long_t uffd_sigbus_count;
+		long cnt = atomic_long_inc_return(&uffd_sigbus_count);
+		if (cnt <= 50 || (cnt % 10000) == 0)
+			pr_warn("UFFD-DBG: handle_userfault SIGBUS (pid=%d comm=%s cnt=%ld addr=0x%lx flags=0x%x reason=0x%lx)\n",
+				current->pid, current->comm, cnt,
+				fe->address, fe->flags, reason);
+#endif
+		goto out;
+	}
 
 	VM_BUG_ON(reason & ~(VM_UFFD_MISSING|VM_UFFD_WP));
 	VM_BUG_ON(!(reason & VM_UFFD_MISSING) ^ !!(reason & VM_UFFD_WP));
@@ -804,6 +825,13 @@ static int userfaultfd_register(struct userfaultfd_ctx *ctx,
 	start = uffdio_register.range.start;
 	end = start + uffdio_register.range.len;
 
+#ifdef CONFIG_USERFAULTFD_DEBUG
+	pr_warn_ratelimited("UFFD-DBG: userfaultfd_register (pid=%d comm=%s start=0x%lx len=0x%llx mode=0x%llx features=0x%x)\n",
+		current->pid, current->comm,
+		start, uffdio_register.range.len, uffdio_register.mode,
+		ctx->features);
+#endif
+
 	ret = -ENOMEM;
 	if (!mmget_not_zero(mm))
 		goto out;
@@ -967,6 +995,12 @@ static int userfaultfd_unregister(struct userfaultfd_ctx *ctx,
 
 	start = uffdio_unregister.start;
 	end = start + uffdio_unregister.len;
+
+#ifdef CONFIG_USERFAULTFD_DEBUG
+	pr_warn_ratelimited("UFFD-DBG: userfaultfd_unregister (pid=%d comm=%s start=0x%lx len=0x%llx)\n",
+		current->pid, current->comm,
+		start, uffdio_unregister.len);
+#endif
 
 	ret = -ENOMEM;
 	if (!mmget_not_zero(mm))
@@ -1141,11 +1175,20 @@ static int userfaultfd_copy(struct userfaultfd_ctx *ctx,
 	ret = -EINVAL;
 	if (uffdio_copy.src + uffdio_copy.len <= uffdio_copy.src)
 		goto out;
-	if (uffdio_copy.mode & ~UFFDIO_COPY_MODE_DONTWAKE)
+	if (uffdio_copy.mode & ~(UFFDIO_COPY_MODE_DONTWAKE |
+				 UFFDIO_COPY_MODE_MMAP_TRYLOCK))
 		goto out;
 	if (mmget_not_zero(ctx->mm)) {
+#ifdef CONFIG_USERFAULTFD_DEBUG
+		pr_warn_ratelimited("UFFD-DBG: userfaultfd_copy (pid=%d comm=%s dst=0x%llx src=0x%llx len=0x%llx mode=0x%llx trylock=%d)\n",
+			current->pid, current->comm,
+			uffdio_copy.dst, uffdio_copy.src, uffdio_copy.len,
+			uffdio_copy.mode,
+			!!(uffdio_copy.mode & UFFDIO_COPY_MODE_MMAP_TRYLOCK));
+#endif
 		ret = mcopy_atomic(ctx->mm, uffdio_copy.dst, uffdio_copy.src,
-				   uffdio_copy.len);
+				   uffdio_copy.len,
+				   uffdio_copy.mode & UFFDIO_COPY_MODE_MMAP_TRYLOCK);
 		mmput(ctx->mm);
 	}
 	if (unlikely(put_user(ret, &user_uffdio_copy->copy)))
@@ -1185,12 +1228,21 @@ static int userfaultfd_zeropage(struct userfaultfd_ctx *ctx,
 	if (ret)
 		goto out;
 	ret = -EINVAL;
-	if (uffdio_zeropage.mode & ~UFFDIO_ZEROPAGE_MODE_DONTWAKE)
+	if (uffdio_zeropage.mode & ~(UFFDIO_ZEROPAGE_MODE_DONTWAKE |
+				     UFFDIO_ZEROPAGE_MODE_MMAP_TRYLOCK))
 		goto out;
 
 	if (mmget_not_zero(ctx->mm)) {
+#ifdef CONFIG_USERFAULTFD_DEBUG
+		pr_warn_ratelimited("UFFD-DBG: userfaultfd_zeropage (pid=%d comm=%s start=0x%llx len=0x%llx mode=0x%llx trylock=%d)\n",
+			current->pid, current->comm,
+			uffdio_zeropage.range.start, uffdio_zeropage.range.len,
+			uffdio_zeropage.mode,
+			!!(uffdio_zeropage.mode & UFFDIO_ZEROPAGE_MODE_MMAP_TRYLOCK));
+#endif
 		ret = mfill_zeropage(ctx->mm, uffdio_zeropage.range.start,
-				     uffdio_zeropage.range.len);
+				     uffdio_zeropage.range.len,
+				     uffdio_zeropage.mode & UFFDIO_ZEROPAGE_MODE_MMAP_TRYLOCK);
 		mmput(ctx->mm);
 	}
 	if (unlikely(put_user(ret, &user_uffdio_zeropage->zeropage)))
@@ -1205,6 +1257,74 @@ static int userfaultfd_zeropage(struct userfaultfd_ctx *ctx,
 		wake_userfault(ctx, &range);
 	}
 	ret = range.len == uffdio_zeropage.range.len ? 0 : -EAGAIN;
+out:
+	return ret;
+}
+
+static int userfaultfd_move(struct userfaultfd_ctx *ctx,
+			   unsigned long arg)
+{
+	__s64 ret;
+	struct uffdio_move uffdio_move;
+	struct uffdio_move __user *user_uffdio_move;
+	struct userfaultfd_wake_range range;
+
+	user_uffdio_move = (struct uffdio_move __user *) arg;
+
+	ret = -EFAULT;
+	if (copy_from_user(&uffdio_move, user_uffdio_move,
+			   /* don't copy "move" last field */
+			   sizeof(uffdio_move)-sizeof(__s64)))
+		goto out;
+
+	ret = validate_range(ctx->mm, uffdio_move.dst, uffdio_move.len);
+	if (ret)
+		goto out;
+
+	ret = validate_range(ctx->mm, uffdio_move.src, uffdio_move.len);
+	if (ret)
+		goto out;
+
+	ret = -EINVAL;
+	if (uffdio_move.src + uffdio_move.len <= uffdio_move.src)
+		goto out;
+	if (uffdio_move.dst + uffdio_move.len <= uffdio_move.dst)
+		goto out;
+	if (uffdio_move.src == uffdio_move.dst)
+		goto out;
+	if (uffdio_move.mode & ~(UFFDIO_MOVE_MODE_DONTWAKE |
+				 UFFDIO_MOVE_MODE_ALLOW_SRC_HOLES))
+		goto out;
+
+	if (mmget_not_zero(ctx->mm)) {
+#ifdef CONFIG_USERFAULTFD_DEBUG
+		pr_warn_ratelimited("UFFD-DBG: userfaultfd_move (pid=%d comm=%s dst=0x%llx src=0x%llx len=0x%llx mode=0x%llx)\n",
+			current->pid, current->comm,
+			uffdio_move.dst, uffdio_move.src, uffdio_move.len,
+			uffdio_move.mode);
+#endif
+		down_read(&ctx->mm->mmap_sem);
+		ret = move_pages(ctx, ctx->mm, uffdio_move.dst,
+				 uffdio_move.src, uffdio_move.len,
+				 uffdio_move.mode);
+		up_read(&ctx->mm->mmap_sem);
+		mmput(ctx->mm);
+	} else {
+		return -ESRCH;
+	}
+
+	if (unlikely(put_user(ret, &user_uffdio_move->move)))
+		return -EFAULT;
+	if (ret < 0)
+		goto out;
+	BUG_ON(!ret);
+	/* len == 0 would wake all */
+	range.len = ret;
+	if (!(uffdio_move.mode & UFFDIO_MOVE_MODE_DONTWAKE)) {
+		range.start = uffdio_move.dst;
+		wake_userfault(ctx, &range);
+	}
+	ret = range.len == uffdio_move.len ? 0 : -EAGAIN;
 out:
 	return ret;
 }
@@ -1227,14 +1347,29 @@ static int userfaultfd_api(struct userfaultfd_ctx *ctx,
 	ret = -EFAULT;
 	if (copy_from_user(&uffdio_api, buf, sizeof(uffdio_api)))
 		goto out;
-	if (uffdio_api.api != UFFD_API || uffdio_api.features) {
+	if (uffdio_api.api != UFFD_API ||
+	    (uffdio_api.features & ~UFFD_API_FEATURES)) {
 		memset(&uffdio_api, 0, sizeof(uffdio_api));
 		if (copy_to_user(buf, &uffdio_api, sizeof(uffdio_api)))
 			goto out;
 		ret = -EINVAL;
 		goto out;
 	}
+	/* Store the features requested by userland */
+	ctx->features = uffdio_api.features;
+#ifdef CONFIG_USERFAULTFD_DEBUG
+	pr_warn("UFFD-DBG: userfaultfd_api (pid=%d comm=%s) requested_features=0x%llx stored_ctx_features=0x%x\n",
+		current->pid, current->comm,
+		uffdio_api.features, ctx->features);
+#endif
 	uffdio_api.features = UFFD_API_FEATURES;
+#ifdef CONFIG_USERFAULTFD_DEBUG
+	pr_warn("UFFD-DBG: userfaultfd_api (pid=%d comm=%s) returning_features=0x%llx (SIGBUS=%d MOVE=%d)\n",
+		current->pid, current->comm,
+		uffdio_api.features,
+		!!(uffdio_api.features & UFFD_FEATURE_SIGBUS),
+		!!(uffdio_api.features & UFFD_FEATURE_MOVE));
+#endif
 	uffdio_api.ioctls = UFFD_API_IOCTLS;
 	ret = -EFAULT;
 	if (copy_to_user(buf, &uffdio_api, sizeof(uffdio_api)))
@@ -1272,6 +1407,9 @@ static long userfaultfd_ioctl(struct file *file, unsigned cmd,
 		break;
 	case UFFDIO_ZEROPAGE:
 		ret = userfaultfd_zeropage(ctx, arg);
+		break;
+	case UFFDIO_MOVE:
+		ret = userfaultfd_move(ctx, arg);
 		break;
 	}
 	return ret;
@@ -1355,6 +1493,9 @@ static struct file *userfaultfd_file_create(int flags)
 	BUILD_BUG_ON(UFFD_CLOEXEC != O_CLOEXEC);
 	BUILD_BUG_ON(UFFD_NONBLOCK != O_NONBLOCK);
 
+	/* Strip UFFD_USER_MODE_ONLY before validating fcntl flags */
+	flags &= ~UFFD_USER_MODE_ONLY;
+
 	file = ERR_PTR(-EINVAL);
 	if (flags & ~UFFD_SHARED_FCNTL_FLAGS)
 		goto out;
@@ -1366,6 +1507,7 @@ static struct file *userfaultfd_file_create(int flags)
 
 	atomic_set(&ctx->refcount, 1);
 	ctx->flags = flags;
+	ctx->features = 0;
 	ctx->state = UFFD_STATE_WAIT_API;
 	ctx->released = false;
 	ctx->mm = current->mm;
@@ -1386,6 +1528,12 @@ SYSCALL_DEFINE1(userfaultfd, int, flags)
 {
 	int fd, error;
 	struct file *file;
+
+#ifdef CONFIG_USERFAULTFD_DEBUG
+	pr_warn("UFFD-DBG: userfaultfd syscall (pid=%d comm=%s flags=0x%x user_mode_only=%d)\n",
+		current->pid, current->comm, flags,
+		!!(flags & UFFD_USER_MODE_ONLY));
+#endif
 
 	error = get_unused_fd_flags(flags & UFFD_SHARED_FCNTL_FLAGS);
 	if (error < 0)
