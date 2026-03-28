@@ -1,0 +1,27 @@
+config SEC_GTA2XLLTE_PROJECT
+	depends on ARCH_SDM450
+	default n
+	bool "Samsung Tab A2 XL LTE Project"
+	help
+	  Support for Samsung Tab A2 XL LTE Project
+
+config MACH_GTA2XLLTE_EUR_OPEN
+	depends on SEC_GTA2XLLTE_PROJECT
+	default n
+	bool "Samsung Tab A2 XL LTE EUR OPEN"
+	help
+	  Support for Samsung Tab A2 XL LTE EUR OPEN device.
+
+config SEC_GTA2XLWIFI_PROJECT
+	depends on ARCH_SDM450
+	default n
+	bool "Samsung Tab A2 XL WIFI Project"
+	help
+	  Support for Samsung Tab A2 XL WIFI Project
+
+config MACH_GTA2XLWIFI_EUR_OPEN
+	depends on SEC_GTA2XLWIFI_PROJECT
+	default n
+	bool "Samsung Tab A2 XL WIFI EUR OPEN"
+	help
+	  Support for Samsung Tab A2 XL WIFI EUR OPEN device.

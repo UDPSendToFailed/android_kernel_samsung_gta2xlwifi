@@ -152,7 +152,7 @@
 		dump_mem: mem_dump_region {
 			compatible = "shared-dma-pool";
 			reusable;
-			size = <0x400000>;
+			size = <0 0x400000>;
 		};
 
 		/* global autoconfigured region for contiguous allocations */
@@ -1341,7 +1341,7 @@
 			label = "modem";
 		};
 
-		qcom,client_3 {
+		mem_client_3_size: qcom,client_3 {
 			compatible = "qcom,memshare-peripheral";
 			qcom,peripheral-size = <0x500000>;
 			qcom,client-id = <1>;

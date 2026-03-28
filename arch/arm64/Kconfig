@@ -1407,6 +1407,8 @@ source "arch/arm64/Kconfig.debug"
 
 source "security/Kconfig"
 
+source "arch/arm64/Kconfig.sec"
+
 source "crypto/Kconfig"
 if CRYPTO
 source "arch/arm64/crypto/Kconfig"
