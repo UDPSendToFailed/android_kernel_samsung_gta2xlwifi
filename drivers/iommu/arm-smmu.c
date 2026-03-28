@@ -1636,15 +1636,14 @@ static int arm_smmu_set_pt_format(struct arm_smmu_domain *smmu_domain,
 {
 	struct arm_smmu_device *smmu = smmu_domain->smmu;
 	struct arm_smmu_cfg *cfg = &smmu_domain->cfg;
-	int ret = 0;
 
 	if ((smmu->version > ARM_SMMU_V1) &&
 	    (cfg->fmt == ARM_SMMU_CTX_FMT_AARCH64) &&
 	    !arm_smmu_has_secure_vmid(smmu_domain) &&
 	    arm_smmu_is_static_cb(smmu)) {
-		ret = msm_tz_set_cb_format(smmu->sec_id, cfg->cbndx);
+		msm_tz_set_cb_format(smmu->sec_id, cfg->cbndx);
 	}
-	return ret;
+	return 0;
 }
 
 static void arm_smmu_init_context_bank(struct arm_smmu_domain *smmu_domain,
@@ -1925,8 +1924,28 @@ static int arm_smmu_init_domain_context(struct iommu_domain *domain,
 	if ((IS_ENABLED(CONFIG_64BIT) || cfg->fmt == ARM_SMMU_CTX_FMT_NONE) &&
 	    (smmu->features & (ARM_SMMU_FEAT_FMT_AARCH64_64K |
 			       ARM_SMMU_FEAT_FMT_AARCH64_16K |
-			       ARM_SMMU_FEAT_FMT_AARCH64_4K)))
-		cfg->fmt = ARM_SMMU_CTX_FMT_AARCH64;
+			       ARM_SMMU_FEAT_FMT_AARCH64_4K))) {
+		/*
+		 * For static CB with TZ-managed SMMU, AARCH64 format
+		 * requires TZ to change the CBA2R register (which the
+		 * driver can't write directly). Probe TZ support on
+		 * the first domain init; if unsupported, fall back to
+		 * AARCH32_L whose 32-bit register format matches what
+		 * TZ has configured.
+		 */
+		if (arm_smmu_is_static_cb(smmu) &&
+		    !(smmu->options & ARM_SMMU_OPT_NO_CB_FMT_CHANGE)) {
+			int rc = msm_tz_set_cb_format(smmu->sec_id, 0);
+			if (rc) {
+				smmu->options |=
+					ARM_SMMU_OPT_NO_CB_FMT_CHANGE;
+				dev_warn(smmu->dev,
+					"TZ does not support CB format change, using AARCH32_L\n");
+			}
+		}
+		if (!(smmu->options & ARM_SMMU_OPT_NO_CB_FMT_CHANGE))
+			cfg->fmt = ARM_SMMU_CTX_FMT_AARCH64;
+	}
 
 	if (cfg->fmt == ARM_SMMU_CTX_FMT_NONE) {
 		ret = -EINVAL;
