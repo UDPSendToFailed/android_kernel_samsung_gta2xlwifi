@@ -742,6 +742,18 @@ config LEDS_QPNP_VIBRATOR
 	  manually or by the DTEST lines.It uses the android timed-output
 	  framework.
 
+config LEDS_KTD2692
+	tristate "LED driver for KTD2692 LED"
+	help
+	  A driver for KTD2692 flash LED.
+	  This option enables support for the LEDs on the KTD2692.
+
+config ACTIVE_FLASH
+	tristate "set Active Flash attribute"
+	help
+	  A driver for Active Flash
+	  This option enables support for the Active Flash.
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 
