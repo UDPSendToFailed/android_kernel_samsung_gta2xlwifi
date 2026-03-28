@@ -1,0 +1,24 @@
+#
+# STMicroelectronics TOUCH driver configuration
+#
+
+config TOUCHSCREEN_FTS1BA90A
+	tristate "STMicroelectronics i2c multitouch touchscreen with FingerTipS"
+	depends on I2C
+	help
+		Say Y here to enable STMicroelectronics touchscreen support.
+		If unsure, say N.
+		To compile this driver as a module, choose M here: the
+		module will be called STM_ts.
+config SECURE_TOUCH
+        bool "Secure Touch support"
+        depends on TOUCHSCREEN_FTS1BA90A
+        help
+          Enable secure touch support for TrustZone-secured
+          touchscreen communication.
+
+config INPUT_TOUCHSCREEN_TCLMV2
+        bool "TCL Module Versioning V2"
+        depends on TOUCHSCREEN_FTS1BA90A
+        help
+          Enable TCL Module Versioning V2 for touchscreen calibration.

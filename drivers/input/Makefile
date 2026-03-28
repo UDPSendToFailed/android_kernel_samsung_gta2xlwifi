@@ -34,5 +34,8 @@ obj-$(CONFIG_RMI4_CORE)		+= rmi4/
 obj-$(CONFIG_INPUT_KEYRESET)	+= keyreset.o
 obj-$(CONFIG_INPUT_KEYCOMBO)	+= keycombo.o
 obj-$(CONFIG_SMI130)   += sensors/smi130/
+obj-$(CONFIG_TOUCHSCREEN_FTS1BA90A)	+= sec_cmd.o
+obj-$(CONFIG_TOUCHSCREEN_FTS1BA90A)	+= sec_tclm_v2.o
 
 obj-$(CONFIG_ELAN_FINGERPRINT)	+= fingerprint/
+obj-$(CONFIG_SENSORS_HALL)	+= hall_sensor.o
