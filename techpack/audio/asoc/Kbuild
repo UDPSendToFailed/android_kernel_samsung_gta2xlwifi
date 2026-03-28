@@ -137,6 +137,12 @@ ifdef CONFIG_SND_SOC_EXT_CODEC_SDM450
 	MACHINE_EXT_OBJS += msm8952-dai-links.o
 endif
 
+# for SDM450 RT5665 external codec sound card driver
+ifdef CONFIG_SND_SOC_MSM8X16_RT5665
+	MACHINE_EXT_OBJS += msm-audio-pinctrl.o
+	MACHINE_EXT_OBJS += msm8952_rt5665.o
+endif
+
 # for MSM8909 sound card driver
 ifdef CONFIG_SND_SOC_BG_8909
 	MACHINE_OBJS += msm_bg.o
