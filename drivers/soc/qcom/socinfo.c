@@ -2041,6 +2041,8 @@ void smem_get_ddr_manufacturer_id(unsigned char *buf)
 	if (manufacturer_id == NULL)
 	{
 		pr_err("[B]%s(%d): Failed to read SMEM_ID_VENDOR2\n", __func__, __LINE__);
+		snprintf((char *)buf, 64, "UNKNOWN");
+		return;
 	}
 
 	switch(*manufacturer_id)
