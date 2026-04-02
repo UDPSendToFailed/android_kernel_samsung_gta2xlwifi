@@ -3636,6 +3636,11 @@ static void __sched notrace __schedule(bool preempt)
 		update_task_ravg(next, rq, PICK_NEXT_TASK, wallclock, 0);
 		rq->nr_switches++;
 		rq->curr = next;
+		/*
+		 * The membarrier system call requires each architecture
+		 * to have a full memory barrier after updating
+		 * rq->curr, before returning to user-space.
+		 */
 		++*switch_count;
 
 		trace_sched_switch(preempt, prev, next);
