@@ -321,6 +321,10 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RECOVERY);
 			__raw_writel(0x77665502, restart_reason);
+		} else if (!strncmp(cmd, "download", 8)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_DOWNLOAD);
+			__raw_writel(0x77665500, restart_reason);
 		} else if (!strcmp(cmd, "rtc")) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RTC);
@@ -365,8 +369,13 @@ static void msm_restart_prepare(const char *cmd)
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 		} else {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_NORMALBOOT);
 			__raw_writel(0x77665501, restart_reason);
 		}
+	} else {
+		qpnp_pon_set_restart_reason(
+			PON_RESTART_REASON_NORMALBOOT);
 	}
 
 	flush_cache_all();
