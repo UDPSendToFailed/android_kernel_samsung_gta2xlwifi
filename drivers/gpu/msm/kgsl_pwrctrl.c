@@ -759,6 +759,73 @@ static int _get_nearest_pwrlevel(struct kgsl_pwrctrl *pwr, unsigned int clock)
 	return -ERANGE;
 }
 
+static ssize_t kgsl_pwrctrl_gpu_oc_mhz_store(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf, size_t count)
+{
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+	struct kgsl_pwrctrl *pwr;
+	unsigned int val = 0;
+	int ret;
+	unsigned int freq;
+
+	if (device == NULL)
+		return 0;
+
+	pwr = &device->pwrctrl;
+
+	ret = kstrtouint(buf, 0, &val);
+	if (ret)
+		return ret;
+
+	/* Convert MHz from user app back to Hz */
+	val *= 1000000;
+
+	mutex_lock(&device->mutex);
+
+	/* Ask the GCC clock driver to round the requested frequency to a supported PLL step */
+	freq = clk_round_rate(pwr->grp_clks[0], val);
+
+	/* * Safety Check: Make sure the new freq is valid and is greater than Level 1 (560MHz)
+	 * This prevents breaking the descending order of the devfreq array.
+	 */
+	if (freq > 0 && freq > pwr->pwrlevels[1].gpu_freq) {
+		/* Mutate the top slot in both the KGSL and devfreq tables */
+		pwr->pwrlevels[0].gpu_freq = freq;
+
+		device->pwrscale.freq_table[0] = freq;
+
+		/* If the GPU is currently running at the max level, apply the new clock to the hardware instantly */
+		if (pwr->active_pwrlevel == 0) {
+			kgsl_pwrctrl_clk_set_rate(pwr->grp_clks[0], freq, clocks[0]);
+		}
+	}
+
+	mutex_unlock(&device->mutex);
+
+	return count;
+}
+
+static ssize_t kgsl_pwrctrl_gpu_oc_mhz_show(struct device *dev,
+						struct device_attribute *attr,
+						char *buf)
+{
+	struct kgsl_device *device = kgsl_device_from_dev(dev);
+	struct kgsl_pwrctrl *pwr;
+
+	if (device == NULL)
+		return 0;
+
+	pwr = &device->pwrctrl;
+
+	/* Show the user exactly what Index 0 is currently set to in MHz */
+	return scnprintf(buf, PAGE_SIZE, "%d\n",
+		pwr->pwrlevels[0].gpu_freq / 1000000);
+}
+
+static DEVICE_ATTR(gpu_oc_mhz, 0644, kgsl_pwrctrl_gpu_oc_mhz_show,
+	kgsl_pwrctrl_gpu_oc_mhz_store);
+
 static void kgsl_pwrctrl_max_clock_set(struct kgsl_device *device, int val)
 {
 	struct kgsl_pwrctrl *pwr;
@@ -1616,6 +1683,7 @@ static const struct device_attribute *pwrctrl_attr_list[] = {
 	&dev_attr_clock_mhz,
 	&dev_attr_freq_table_mhz,
 	&dev_attr_temp,
+	&dev_attr_gpu_oc_mhz,
 	&dev_attr_pwrscale,
 	NULL
 };
