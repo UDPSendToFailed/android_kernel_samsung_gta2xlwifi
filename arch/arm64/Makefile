@@ -130,6 +130,10 @@ endif
 
 ifeq ($(cc-name),clang)
 KBUILD_CFLAGS += $(call cc-disable-warning, asm-operand-widths)
+# Tune for Cortex-A53 in-order pipeline (SDM450 = 8x A53 @ 1.8GHz)
+KBUILD_CFLAGS += -mcpu=cortex-a53
+# Polyhedral loop optimizer — improves loop-heavy code (crypto, mm, compression)
+KBUILD_CFLAGS += -mllvm -polly
 endif
 
 # KASAN_SHADOW_OFFSET = VA_START + (1 << (VA_BITS - 3)) - (1 << 61)

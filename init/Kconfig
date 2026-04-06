@@ -1535,11 +1535,19 @@ choice
 	default CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
 
 config CC_OPTIMIZE_FOR_PERFORMANCE
-	bool "Optimize for performance"
+	bool "Optimize for performance (-O2)"
 	help
 	  This is the default optimization level for the kernel, building
 	  with the "-O2" compiler flag for best performance and most
 	  helpful compile-time warnings.
+
+config CC_OPTIMIZE_FOR_PERFORMANCE_O3
+	bool "Optimize for performance (-O3)"
+	help
+	  Enabling this option will pass "-O3" to your compiler resulting
+	  in a larger but potentially faster kernel.
+
+	  If unsure, say N.
 
 config CC_OPTIMIZE_FOR_SIZE
 	bool "Optimize for size"
