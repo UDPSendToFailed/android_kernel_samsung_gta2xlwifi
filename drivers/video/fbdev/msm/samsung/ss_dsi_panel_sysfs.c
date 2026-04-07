@@ -1551,7 +1551,7 @@ static ssize_t mipi_samsung_poc_show(struct device *dev,
 	*/
 	for (wait_cnt = 0; wait_cnt < MAX_POC_SHOW_WAIT; wait_cnt++) {
 		msleep(10);
-		if ((vdd->vdd_blank_mode[ndx] ==  FB_BLANK_UNBLANK))/* &&
+		if (vdd->vdd_blank_mode[ndx] == FB_BLANK_UNBLANK)/* &&
 			(vdd->vdd_blank_mode_done[ndx] ==  FB_BLANK_UNBLANK))*/
 			break;
 	}

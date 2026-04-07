@@ -316,7 +316,7 @@ static bool sec_multi_chg_check_abnormal_case(struct sec_multi_charger_info *cha
 
 	/* check abnormal case */
 	psy_do_property(charger->pdata->sub_charger_name, get,
-		POWER_SUPPLY_EXT_PROP_CHECK_MULTI_CHARGE, value);
+		(enum power_supply_property)POWER_SUPPLY_EXT_PROP_CHECK_MULTI_CHARGE, value);
 
 	check_val = (value.intval != POWER_SUPPLY_STATUS_CHARGING && charger->sub_is_charging) |
 		(value.intval == POWER_SUPPLY_STATUS_CHARGING && !charger->sub_is_charging);
@@ -397,7 +397,7 @@ static int sec_multi_chg_get_property(struct power_supply *psy,
 			    union power_supply_propval *val)
 {
 	struct sec_multi_charger_info *charger = power_supply_get_drvdata(psy);
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 	union power_supply_propval value = {0,};
 
 	value.intval = val->intval;
@@ -432,7 +432,7 @@ static int sec_multi_chg_get_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
 		break;
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX:
+	default:
 		switch (ext_psp) {
 		case POWER_SUPPLY_EXT_PROP_CHIP_ID:
 			psy_do_property(charger->pdata->main_charger_name, get, psp, value);
@@ -478,8 +478,6 @@ static int sec_multi_chg_get_property(struct power_supply *psy,
 			return -EINVAL;
 		}
 		break;
-	default:
-		return -EINVAL;
 	}
 
 	return 0;
@@ -490,7 +488,7 @@ static int sec_multi_chg_set_property(struct power_supply *psy,
 			    const union power_supply_propval *val)
 {
 	struct sec_multi_charger_info *charger = power_supply_get_drvdata(psy);
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 	union power_supply_propval value = {0,};
 
 	value.intval = val->intval;
@@ -602,7 +600,7 @@ static int sec_multi_chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION:
 		psy_do_property(charger->pdata->main_charger_name, set, psp, value);
 		break;
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX:
+	default:
 		switch (ext_psp) {
 		case POWER_SUPPLY_EXT_PROP_MULTI_CHARGER_MODE:
 			if (charger->chg_mode == SEC_BAT_CHG_MODE_CHARGING && charger->multi_mode != val->intval) {
@@ -669,7 +667,7 @@ static int sec_multi_chg_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_EXT_PROP_FACTORY_VOLTAGE_REGULATION:
 		case POWER_SUPPLY_EXT_PROP_CURRENT_MEASURE:
 			psy_do_property(charger->pdata->main_charger_name, set,
-						ext_psp, value);
+						(enum power_supply_property)ext_psp, value);
 			break;
 		case POWER_SUPPLY_EXT_PROP_SUB_CURRENT_NOW:
 			pr_debug("%s: EXT_PROP_SUB_CURRENT_NOW (%d)\n", __func__, val->intval);
@@ -679,8 +677,6 @@ static int sec_multi_chg_set_property(struct power_supply *psy,
 			return -EINVAL;
 		}
 		break;
-	default:
-		return -EINVAL;
 	}
 
 	return 0;

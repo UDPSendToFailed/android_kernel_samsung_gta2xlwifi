@@ -210,7 +210,7 @@ static int bq25898s_chg_get_property(struct power_supply *psy,
 		union power_supply_propval *val)
 {
 	struct bq25898s_charger *charger = power_supply_get_drvdata(psy);
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 
 	val->intval = 0;
 
@@ -246,7 +246,7 @@ static int bq25898s_chg_get_property(struct power_supply *psy,
 		return -ENODATA;
 	case POWER_SUPPLY_PROP_CHARGE_NOW:
 		break;
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX:
+	default:
 		switch (ext_psp) {
 			case POWER_SUPPLY_EXT_PROP_CHECK_SLAVE_I2C:
 			{
@@ -267,8 +267,6 @@ static int bq25898s_chg_get_property(struct power_supply *psy,
 			return -EINVAL;
 		}
 	break;
-	default:
-		return -EINVAL;
 	}
 	return 0;
 }

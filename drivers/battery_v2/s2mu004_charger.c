@@ -817,7 +817,7 @@ static int s2mu004_chg_get_property(struct power_supply *psy, enum power_supply_
 	int chg_curr, aicr;
 	u8 chg_sts0 = 0;
 	struct s2mu004_charger_data *charger = power_supply_get_drvdata(psy);
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
@@ -879,7 +879,7 @@ static int s2mu004_chg_get_property(struct power_supply *psy, enum power_supply_
 		break;
 	case POWER_SUPPLY_PROP_INPUT_VOLTAGE_REGULATION:
 		break;
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX: 
+	default: 
 		switch (ext_psp) {
 			case POWER_SUPPLY_EXT_PROP_CHIP_ID:
 				{
@@ -899,8 +899,6 @@ static int s2mu004_chg_get_property(struct power_supply *psy, enum power_supply_
 				return -ENODATA;
 		}
 		break;
-	default:
-		return -EINVAL;
 	}
 	
 	return 0;
@@ -909,7 +907,7 @@ static int s2mu004_chg_set_property(struct power_supply *psy, enum power_supply_
 						const union power_supply_propval *val)
 {
 	struct s2mu004_charger_data *charger = power_supply_get_drvdata(psy);
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 	int buck_state = ENABLE;
 	union power_supply_propval value;
 	
@@ -1089,7 +1087,7 @@ static int s2mu004_chg_set_property(struct power_supply *psy, enum power_supply_
 			}
 		}
 		break;
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX:
+	default:
 		switch (ext_psp) {
 		case POWER_SUPPLY_EXT_PROP_FUELGAUGE_RESET:
 			s2mu004_write_reg(charger->i2c, 0x6F, 0xC4);
@@ -1143,7 +1141,7 @@ static int s2mu004_chg_set_property(struct power_supply *psy, enum power_supply_
 					
 				value.intval = SEC_BAT_FGSRC_SWITCHING_OFF;
 				psy_do_property("s2mu004-fuelgauge", set,
-					POWER_SUPPLY_EXT_PROP_FUELGAUGE_FACTORY, value);
+					(enum power_supply_property)POWER_SUPPLY_EXT_PROP_FUELGAUGE_FACTORY, value);
 			} else {
 				pr_debug("%s: Bypass exit for current measure\n", __func__);
 				s2mu004_update_reg(charger->i2c, 0x29, 0x0, 0x01 << 1);
@@ -1157,8 +1155,6 @@ static int s2mu004_chg_set_property(struct power_supply *psy, enum power_supply_
 			return -EINVAL;
 		}
 		break;
-	default:
-		return -EINVAL;
 	}
 	
 	return 0;
@@ -1394,7 +1390,7 @@ static void s2mu004_ivr_irq_work(struct work_struct *work)
 	if (charger->ivr_on) {
 		union power_supply_propval value;
 		value.intval = s2mu004_get_input_current_limit(charger);
-		psy_do_property("battery", set, POWER_SUPPLY_EXT_PROP_AICL_CURRENT, value);
+		psy_do_property("battery", set, (enum power_supply_property)POWER_SUPPLY_EXT_PROP_AICL_CURRENT, value);
 	}
 	/* Unmask IRQ */
 	s2mu004_update_reg(charger->i2c, S2MU004_REG_SC_INT2_MASK, 0 << IVR_M_SHIFT, IVR_M_MASK);
