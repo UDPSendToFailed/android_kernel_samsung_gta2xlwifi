@@ -1205,7 +1205,7 @@ int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 
 	data = of_get_property(np, cmd_key, &blen);
 	if (!data) {
-		pr_err("%s: failed, key=%s\n", __func__, cmd_key);
+		//pr_err("%s: failed, key=%s\n", __func__, cmd_key);
 		return -ENOMEM;
 	}
 
