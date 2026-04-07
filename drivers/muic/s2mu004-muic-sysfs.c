@@ -530,7 +530,7 @@ static ssize_t s2mu004_muic_set_afc_disable(struct device *dev,
 	pr_info("%s afc_disable(%d)\n", __func__, pdata->afc_disable);
 	psy_val.intval = pdata->afc_disable ? '1' : '0';
 	psy_do_property("battery", set,
-		POWER_SUPPLY_EXT_PROP_HV_DISABLE, psy_val);
+		(enum power_supply_property)POWER_SUPPLY_EXT_PROP_HV_DISABLE, psy_val);
 
 	/* FIXME: for factory self charging test (AFC-> NORMAL TA) */
 #ifdef CONFIG_CCIC_NOTIFIER

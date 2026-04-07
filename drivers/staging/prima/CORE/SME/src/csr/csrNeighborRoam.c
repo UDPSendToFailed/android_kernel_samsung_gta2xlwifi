@@ -2034,7 +2034,7 @@ static VOS_STATUS csrNeighborRoamHandleEmptyScanResult(tpAniSirGlobal pMac)
         {
             status = csrNeighborRoamPerformPeriodicScan(pMac, sessionId);
 
-            if (VOS_STATUS_SUCCESS != status)
+            if (eHAL_STATUS_SUCCESS != status)
             {
                  NEIGHBOR_ROAM_DEBUG(pMac, LOGE, " Periodic scan failed to start %d", status);
             }
@@ -5712,7 +5712,7 @@ eHalStatus csrNeighborRoamCandidateFoundIndHdlr(tpAniSirGlobal pMac, void* pMsg)
         csrScanFlushSelectiveSsid(pMac, pSession->connectedProfile.SSID.ssId,
                                   pSession->connectedProfile.SSID.length);
         /* Once it gets the candidates found indication from PE, will issue a scan
-         - req to PE with “freshScan” in scanreq structure set as follows:
+         - req to PE with ï¿½freshScanï¿½ in scanreq structure set as follows:
          0x42 - Return & purge LFR scan results
         */
         status = csrScanRequestLfrResult(pMac, pNeighborRoamInfo->csrSessionId,

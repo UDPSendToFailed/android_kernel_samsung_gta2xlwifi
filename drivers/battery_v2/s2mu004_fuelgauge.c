@@ -585,7 +585,7 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 		value.intval = SEC_BAT_CHG_MODE_CHARGING_OFF;
 		psy_do_property("s2mu004-charger", set, POWER_SUPPLY_PROP_CHARGING_ENABLED, value);
 		if (fuelgauge->reg_OTP_4E != reg_OTP_4E || fuelgauge->reg_OTP_4F != reg_OTP_4F) {
-			psy_do_property("s2mu004-charger", set, POWER_SUPPLY_EXT_PROP_FUELGAUGE_RESET, value);
+			psy_do_property("s2mu004-charger", set, (enum power_supply_property)POWER_SUPPLY_EXT_PROP_FUELGAUGE_RESET, value);
 			s2mu004_write_reg_byte(fuelgauge->i2c, 0x1F, 0x40);
 			msleep(50);
 			s2mu004_write_reg_byte(fuelgauge->i2c, 0x1F, 0x01);
@@ -594,7 +594,7 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 			dev_err(&fuelgauge->i2c->dev, "1st reset after %s: OTP 4E(%02x) 4F(%02x) current 4E(%02x) 4F(%02x) \n",
 				__func__, fuelgauge->reg_OTP_4E, fuelgauge->reg_OTP_4F, reg_OTP_4E, reg_OTP_4F);
 			if (fuelgauge->reg_OTP_4E != reg_OTP_4E || fuelgauge->reg_OTP_4F != reg_OTP_4F) {
-				psy_do_property("s2mu004-charger", set, POWER_SUPPLY_EXT_PROP_FUELGAUGE_RESET, value);
+				psy_do_property("s2mu004-charger", set, (enum power_supply_property)POWER_SUPPLY_EXT_PROP_FUELGAUGE_RESET, value);
 				s2mu004_write_reg_byte(fuelgauge->i2c, 0x1F, 0x40);
 				msleep(50);
 				s2mu004_write_reg_byte(fuelgauge->i2c, 0x1F, 0x01);
@@ -777,10 +777,10 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 	info_soc = fuelgauge->info.soc / 100;
 	if (info_soc > 93) {
 		value.intval = 0; /* digital ivr */
-		psy_do_property("s2mu004-charger", set, POWER_SUPPLY_EXT_PROP_ANDIG_IVR_SWITCH, value);
+		psy_do_property("s2mu004-charger", set, (enum power_supply_property)POWER_SUPPLY_EXT_PROP_ANDIG_IVR_SWITCH, value);
 	} else {
 		value.intval = 1; /* analog ivr */
-		psy_do_property("s2mu004-charger", set, POWER_SUPPLY_EXT_PROP_ANDIG_IVR_SWITCH, value);
+		psy_do_property("s2mu004-charger", set, (enum power_supply_property)POWER_SUPPLY_EXT_PROP_ANDIG_IVR_SWITCH, value);
 	}
 #endif
 	/* Cache values for subsequent get_property calls within this poll */
@@ -1351,7 +1351,7 @@ static int s2mu004_fg_set_property(struct power_supply *psy, enum power_supply_p
 						const union power_supply_propval *val)
 {
 	struct s2mu004_fuelgauge_data *fuelgauge = power_supply_get_drvdata(psy);
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 	u8 temp = 0;
 	
 	switch (psp) {
@@ -1413,7 +1413,7 @@ static int s2mu004_fg_set_property(struct power_supply *psy, enum power_supply_p
 		else
 			s2mu004_write_reg_byte(fuelgauge->i2c, 0x41, 0x04); /* charger end */
 		break;
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX:
+	default:
 		switch (ext_psp) {
 		case POWER_SUPPLY_EXT_PROP_FUELGAUGE_FACTORY:
 			pr_debug("%s:[DEBUG_FAC]  fuelgauge \n", __func__);
@@ -1432,8 +1432,6 @@ static int s2mu004_fg_set_property(struct power_supply *psy, enum power_supply_p
 			return -EINVAL;
 		}
 		break;
-	default:
-		return -EINVAL;
 	}
 	
 	return 0;

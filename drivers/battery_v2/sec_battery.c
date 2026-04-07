@@ -1089,7 +1089,7 @@ static int sec_bat_set_charging_current(struct sec_battery_info *battery)
 #if defined(CONFIG_MULTI_PORT_CHARGING)
 		value.intval = sub_charging_current;
 		psy_do_property(battery->pdata->charger_name, set,
-				POWER_SUPPLY_EXT_PROP_SUB_CURRENT_NOW, value);
+				(enum power_supply_property)POWER_SUPPLY_EXT_PROP_SUB_CURRENT_NOW, value);
 		battery->sub_charging_current = sub_charging_current;
 #endif
 
@@ -1775,7 +1775,7 @@ static bool sec_bat_set_aging_step(struct sec_battery_info *battery, int step)
 #if defined(CONFIG_FUELGAUGE_S2MU004) || defined(CONFIG_FUELGAUGE_S2MU005)
 	value.intval = battery->pdata->age_step;
 	psy_do_property(battery->pdata->fuelgauge_name, set,
-		POWER_SUPPLY_EXT_PROP_UPDATE_BATTERY_DATA, value);
+		(enum power_supply_property)POWER_SUPPLY_EXT_PROP_UPDATE_BATTERY_DATA, value);
 #else
 	value.intval = battery->pdata->full_condition_soc;
 	psy_do_property(battery->pdata->fuelgauge_name, set,
@@ -4437,7 +4437,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 		break;
 	case CHECK_SLAVE_CHG:
 		psy_do_property(battery->pdata->charger_name, get,
-			POWER_SUPPLY_EXT_PROP_CHECK_SLAVE_I2C, value);
+			(enum power_supply_property)POWER_SUPPLY_EXT_PROP_CHECK_SLAVE_I2C, value);
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 				value.intval);
 		pr_debug("%s : CHECK_SLAVE_CHG=%d\n",__func__,value.intval);
@@ -4611,17 +4611,17 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 #endif
 	case WC_OP_FREQ:
 		psy_do_property(battery->pdata->wireless_charger_name, get,
-			POWER_SUPPLY_EXT_PROP_WIRELESS_OP_FREQ, value);
+			(enum power_supply_property)POWER_SUPPLY_EXT_PROP_WIRELESS_OP_FREQ, value);
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n", value.intval);
 		break;
 	case WC_CMD_INFO:
 		psy_do_property(battery->pdata->wireless_charger_name, get,
-			POWER_SUPPLY_EXT_PROP_WIRELESS_TX_CMD, value);
+			(enum power_supply_property)POWER_SUPPLY_EXT_PROP_WIRELESS_TX_CMD, value);
 		i += scnprintf(buf + i, PAGE_SIZE - i, "0x%02x ",
 			value.intval);
 
 		psy_do_property(battery->pdata->wireless_charger_name, get,
-			POWER_SUPPLY_EXT_PROP_WIRELESS_TX_VAL, value);
+			(enum power_supply_property)POWER_SUPPLY_EXT_PROP_WIRELESS_TX_VAL, value);
 		i += scnprintf(buf + i, PAGE_SIZE - i, "0x%02x ",
 			value.intval);	
 		break;
@@ -4722,7 +4722,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 	case MODE:
 		value.strval = NULL;
 		psy_do_property(battery->pdata->charger_name, get,
-			POWER_SUPPLY_EXT_PROP_MULTI_CHARGER_MODE, value);
+			(enum power_supply_property)POWER_SUPPLY_EXT_PROP_MULTI_CHARGER_MODE, value);
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%s\n",
 			(value.strval) ? value.strval : "master");
 		break;
@@ -4736,7 +4736,7 @@ ssize_t sec_bat_show_attrs(struct device *dev,
 		break;
 	case BATT_CHIP_ID:
 		psy_do_property(battery->pdata->charger_name, get,
-			POWER_SUPPLY_EXT_PROP_CHIP_ID, value);
+			(enum power_supply_property)POWER_SUPPLY_EXT_PROP_CHIP_ID, value);
 		i += scnprintf(buf + i, PAGE_SIZE - i, "%d\n",
 				value.intval);
 		break;
@@ -5929,7 +5929,7 @@ ssize_t sec_bat_store_attrs(struct device *dev,
 		if (sscanf(buf, "%10d\n", &x) == 1) {
 			value.intval = x;
 			psy_do_property(battery->pdata->charger_name, set,
-				POWER_SUPPLY_EXT_PROP_MULTI_CHARGER_MODE, value);
+				(enum power_supply_property)POWER_SUPPLY_EXT_PROP_MULTI_CHARGER_MODE, value);
 			ret = count;
 		}
 		break;
@@ -6243,7 +6243,7 @@ ssize_t sec_bat_store_attrs(struct device *dev,
 				sec_bat_set_charge(battery, SEC_BATTERY_BUCKOFF);
 			}
 			psy_do_property(battery->pdata->charger_name, set,
-				POWER_SUPPLY_EXT_PROP_CURRENT_MEASURE, value);
+				(enum power_supply_property)POWER_SUPPLY_EXT_PROP_CURRENT_MEASURE, value);
 			ret = count;
 		}
 		break;
@@ -6251,7 +6251,7 @@ ssize_t sec_bat_store_attrs(struct device *dev,
 		if (sscanf(buf, "%10d\n", &x) == 1) {
 			value.intval = x;
 			psy_do_property(battery->pdata->charger_name, set,
-				POWER_SUPPLY_EXT_PROP_DISABLE_FACTORY_MODE, value);
+				(enum power_supply_property)POWER_SUPPLY_EXT_PROP_DISABLE_FACTORY_MODE, value);
 			ret = count;
 		}
 		break;
@@ -6260,7 +6260,7 @@ ssize_t sec_bat_store_attrs(struct device *dev,
 			sscanf(buf, "%10d\n", &x);
 			value.intval = x;
 			psy_do_property(battery->pdata->charger_name, set,
-				POWER_SUPPLY_EXT_PROP_FACTORY_VOLTAGE_REGULATION, value);
+				(enum power_supply_property)POWER_SUPPLY_EXT_PROP_FACTORY_VOLTAGE_REGULATION, value);
 
 			value.intval =
 				SEC_FUELGAUGE_CAPACITY_TYPE_RESET;
@@ -6308,7 +6308,7 @@ static int sec_bat_set_property(struct power_supply *psy,
 	int current_cable_type = SEC_BATTERY_CABLE_NONE;
 	int full_check_type = SEC_BATTERY_FULLCHARGED_NONE;
 	union power_supply_propval value = {0, };
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 
 	dev_dbg(battery->dev,
 		"%s: (%d,%d)\n", __func__, psp, val->intval);
@@ -6446,7 +6446,7 @@ static int sec_bat_set_property(struct power_supply *psy,
 		battery->block_water_event = val->intval;
 		break;
 #endif
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX:
+	default:
 		switch (ext_psp) {
 		case POWER_SUPPLY_EXT_PROP_AICL_CURRENT:
 			battery->aicl_current = val->intval;
@@ -6536,8 +6536,6 @@ static int sec_bat_set_property(struct power_supply *psy,
 			return -EINVAL;
 		}
 		break;
-	default:
-		return -EINVAL;
 	}
 
 	return 0;
@@ -6552,7 +6550,7 @@ static int sec_bat_get_property(struct power_supply *psy,
 #ifdef CONFIG_SEC_FACTORY
 	union power_supply_propval value = {0, };
 #endif
-	enum power_supply_ext_property ext_psp = psp;
+	enum power_supply_ext_property ext_psp = (enum power_supply_ext_property)psp;
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_STATUS:
@@ -6722,7 +6720,7 @@ static int sec_bat_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_POWER_NOW:
 		val->intval = battery->charge_power;
 		break;
-	case POWER_SUPPLY_PROP_MAX ... POWER_SUPPLY_EXT_PROP_MAX:
+	default:
 		switch (ext_psp) {
 		case POWER_SUPPLY_EXT_PROP_SUB_PBA_TEMP_REC:
 			val->intval = !battery->vbus_limit;
@@ -6734,8 +6732,6 @@ static int sec_bat_get_property(struct power_supply *psy,
 			return -EINVAL;
 		}
 		break;
-	default:
-		return -EINVAL;
 	}
 	return 0;
 }
@@ -9304,7 +9300,7 @@ static void sec_bat_init_chg_work(struct work_struct *work)
 		!(battery->misc_event & (BATT_MISC_EVENT_UNDEFINED_RANGE_TYPE |
 			BATT_MISC_EVENT_HICCUP_TYPE))) {
 		pr_debug("%s: disable charging\n", __func__);
-		sec_bat_set_charge(battery, SEC_BAT_CHG_MODE_CHARGING_OFF);
+		sec_bat_set_charge(battery, SEC_BATTERY_CHARGING_NONE);
 	}
 }
 

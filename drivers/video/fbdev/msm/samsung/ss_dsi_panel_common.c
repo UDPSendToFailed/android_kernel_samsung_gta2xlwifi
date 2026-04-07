@@ -1532,7 +1532,7 @@ int mdss_samsung_panel_on_post(struct mdss_panel_data *pdata)
 			(vdd->display_status_dsi[DISPLAY_1].hall_ic_mode_change_trigger == false))
 			mdss_samsung_brightness_dcs(ctrl, vdd->bl_level);
 	} else {
-		if ((vdd->ctrl_dsi[DISPLAY_1]->bklt_ctrl == BL_DCS_CMD))
+		if (vdd->ctrl_dsi[DISPLAY_1]->bklt_ctrl == BL_DCS_CMD)
 			mdss_samsung_brightness_dcs(ctrl, vdd->bl_level);
 	}
 
