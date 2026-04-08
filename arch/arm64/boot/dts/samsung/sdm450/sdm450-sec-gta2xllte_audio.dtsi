@@ -197,8 +197,8 @@
 		adaptation,voice-tracking-tx-port-id = <0x1017>;
 	};
 
-	spi_4: spi@78b8000 { /* BLSP1 QUP4 */
-		status = "ok";
+	spi_4: spi@78b8000 { /* BLSP1 QUP4 — DBMDX only, disabled */
+		status = "disabled";
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -244,20 +244,22 @@
 	};
 
 	dbmdx_event {
-		status = "okay";
+		status = "disabled";
 		compatible = "samsung,dbmdx-event";
 	};
 
 	dbmdx-snd-soc-platform {
+		status = "disabled";
 		compatible = "dspg,dbmdx-snd-soc-platform";
 	};
 
 	snd-dbmdx-mach-drv {
+		status = "disabled";
 		compatible = "dspg,snd-dbmdx-mach-drv";
 	};
 
 	dbmdx {
-		status = "okay";
+		status = "disabled";
 		compatible = "dspg,dbmdx-codec";
 		qcom,use-pinctrl;
 		pinctrl-names = "default", "sleep";
@@ -417,7 +419,7 @@
 		asoc-cpu = <&dai_pri_auxpcm>,
 				<&dai_mi2s0>, <&dai_mi2s1>,
 				<&dai_mi2s2>, <&dai_mi2s3>,
-				<&dai_mi2s5>, <&dai_mi2s6>,
+				<&dai_mi2s5>,
 				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
 				<&sb_3_rx>, <&sb_3_tx>, <&sb_4_rx>, <&sb_4_tx>,
 				<&bt_sco_rx>, <&bt_sco_tx>,
@@ -431,7 +433,7 @@
 		asoc-cpu-names = "msm-dai-q6-auxpcm.1",
 				"msm-dai-q6-mi2s.0", "msm-dai-q6-mi2s.1",
 				"msm-dai-q6-mi2s.2", "msm-dai-q6-mi2s.3",
-				"msm-dai-q6-mi2s.5", "msm-dai-q6-mi2s.6",
+				"msm-dai-q6-mi2s.5",
 				"msm-dai-q6-dev.16384", "msm-dai-q6-dev.16385",
 				"msm-dai-q6-dev.16386", "msm-dai-q6-dev.16387",
 				"msm-dai-q6-dev.16390", "msm-dai-q6-dev.16391",

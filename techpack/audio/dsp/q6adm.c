@@ -3031,6 +3031,15 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 	    (topology == VPM_TX_DM_RFECNS_COPP_TOPOLOGY))
 		rate = 16000;
 
+#ifdef CONFIG_SND_SOC_MSM8X16_RT5665
+	/*
+	 * because ADSP cannot support 24bit recording,
+	 * fix to I2S tx bitwidth to 16bit
+	 */
+	if (port_id == AFE_PORT_ID_QUINARY_MI2S_TX)
+		bit_width = 16;
+#endif
+
 	/*
 	 * Routing driver reuses the same adm for streams with the same
 	 * app_type, sample_rate etc.

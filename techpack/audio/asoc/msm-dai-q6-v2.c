@@ -4401,7 +4401,11 @@ static int msm_dai_q6_mi2s_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	dev_get_drvdata(dai->dev);
 
 	if (test_bit(STATUS_PORT_STARTED,
+#ifdef CONFIG_SND_SOC_MSM8X16_RT5665
+	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) &&
+#else
 	    mi2s_dai_data->rx_dai.mi2s_dai_data.status_mask) ||
+#endif
 	    test_bit(STATUS_PORT_STARTED,
 	    mi2s_dai_data->tx_dai.mi2s_dai_data.status_mask)) {
 		dev_err(dai->dev, "%s: err chg i2s mode while dai running",
@@ -4613,10 +4617,11 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 		.playback = {
 			.stream_name = "Quinary MI2S Playback",
 			.aif_name = "QUIN_MI2S_RX",
-			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
-			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
-			SNDRV_PCM_RATE_192000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			.rates = SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |
+			SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_96000 |
+			SNDRV_PCM_RATE_192000 | SNDRV_PCM_RATE_44100,
+			.formats = SNDRV_PCM_FMTBIT_S16_LE |
+			SNDRV_PCM_FMTBIT_S24_LE,
 			.rate_min =     8000,
 			.rate_max =     192000,
 		},
@@ -4624,10 +4629,14 @@ static struct snd_soc_dai_driver msm_dai_q6_mi2s_dai[] = {
 			.stream_name = "Quinary MI2S Capture",
 			.aif_name = "QUIN_MI2S_TX",
 			.rates = SNDRV_PCM_RATE_48000 | SNDRV_PCM_RATE_8000 |
-			SNDRV_PCM_RATE_16000,
-			.formats = SNDRV_PCM_FMTBIT_S16_LE,
+			SNDRV_PCM_RATE_16000 | SNDRV_PCM_RATE_96000 |
+			SNDRV_PCM_RATE_192000 | SNDRV_PCM_RATE_44100,
+			.formats = (SNDRV_PCM_FMTBIT_S16_LE |
+			SNDRV_PCM_FMTBIT_S24_LE |
+			SNDRV_PCM_FMTBIT_S24_3LE |
+			SNDRV_PCM_FMTBIT_S32_LE),
 			.rate_min =     8000,
-			.rate_max =     48000,
+			.rate_max =     192000,
 		},
 		.ops = &msm_dai_q6_mi2s_ops,
 		.id = MSM_QUIN_MI2S,

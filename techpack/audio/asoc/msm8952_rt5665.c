@@ -33,9 +33,6 @@
 #include "msm-audio-pinctrl.h"
 #include <linux/regulator/consumer.h>
 #include "../../../sound/soc/codecs/rt5665.h"
-#if defined(CONFIG_SND_SOC_DBMDX)
-#include <sound/dbmdx-export.h>
-#endif
 
 #define DRV_NAME "msm8952-asoc-rt5665"
 
@@ -153,8 +150,8 @@ struct snd_sysclk_info {
 };
 
 struct snd_sysclk_info rt5665_sysclk = {
-	.clk_id = RT5665_PLL1_S_MCLK,
-	.fll_in = 24000000,
+	.clk_id = RT5665_PLL1_S_BCLK1,
+	.fll_in = 1536000,
 	.fll_out = 24576000,
 };
 
@@ -363,6 +360,7 @@ static int msm_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+#if 0 /* DBMDX disabled — SENARY MI2S not used */
 static int msm_senary_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 				struct snd_pcm_hw_params *params)
 {
@@ -376,6 +374,7 @@ static int msm_senary_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 
 	return 0;
 }
+#endif
 
 
 static int msm_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
@@ -671,7 +670,8 @@ end:
 
 #endif
 
-static void msm8952_rt5665_set_mclk(struct snd_soc_card *card, int enable)
+static void __maybe_unused msm8952_rt5665_set_mclk(struct snd_soc_card *card,
+						    int enable)
 {
 	struct msm8952_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	int ret;
@@ -740,7 +740,7 @@ static int msm_rt5665_aif1_mi2s_snd_hw_params(struct snd_pcm_substream *substrea
 			params_channels(params), params_rate(params),
 			params_buffer_bytes(params));
 
-	msm8952_rt5665_set_mclk(card, 1);
+	/* MCLK pin is not connected on gta2xlwifi — PLL uses BCLK1 */
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
 		param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT,
@@ -2288,8 +2288,6 @@ err:
 static void msm_quin_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 {
 	int ret;
-	struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	struct snd_soc_card *card = rtd->card;
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
@@ -2304,8 +2302,6 @@ static void msm_quin_mi2s_snd_shutdown(struct snd_pcm_substream *substream)
 						__func__, "quin_i2s");
 			return;
 		}
-
-	msm8952_rt5665_set_mclk(card, 0);
 }
 
 static int msm8952_rt5665_device_down(struct snd_soc_codec *codec)
@@ -2405,10 +2401,6 @@ static int rt5665_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_add_codec_controls(codec, msm_snd_controls,
 			ARRAY_SIZE(msm_snd_controls));
-
-#if defined(CONFIG_SND_SOC_DBMDX)
-		dbmdx_remote_add_codec_controls(codec);
-#endif
 
 	snd_soc_card_jack_new(codec->component.card, "Headset Jack", SND_JACK_HEADSET, &hs_jack, NULL, 0);
 #if IS_ENABLED(CONFIG_SND_SOC_RT5665)
@@ -3039,7 +3031,8 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
-	{/* hw:x,26 */
+#if 0 /* DBMDX disabled — SENARY MI2S not used */
+	{/* hw:x,26 — DBMDX hostless backend */
 		.name = LPASS_BE_SENARY_MI2S_TX,
 		.stream_name = "Senary_mi2s Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.6",
@@ -3054,6 +3047,7 @@ static struct snd_soc_dai_link msm8952_dai[] = {
 		.dpcm_capture = 1,
 		.ignore_pmdown_time = 1,
 	},
+#endif
 	{/* hw:x,27 */
 		.name = "MSM8X16 Compress3",
 		.stream_name = "Compress3",

@@ -3819,6 +3819,10 @@ static int msm_routing_ec_ref_rx_put(struct snd_kcontrol *kcontrol,
 		msm_route_ec_ref_rx = 24;
 		ec_ref_port_id = AFE_PORT_ID_PRIMARY_TDM_RX_1;
 		break;
+	case 25:
+		msm_route_ec_ref_rx = 25;
+		ec_ref_port_id = AFE_PORT_ID_QUINARY_MI2S_RX;
+		break;
 	default:
 		msm_route_ec_ref_rx = 0; /* NONE */
 		pr_err("%s EC ref rx %ld not valid\n",
@@ -3843,7 +3847,7 @@ static const char *const ec_ref_rx[] = { "None", "SLIM_RX", "I2S_RX",
 	"QUAT_TDM_RX_0", "QUAT_TDM_RX_1", "QUAT_TDM_RX_2", "SLIM_6_RX",
 	"TERT_MI2S_RX", "QUAT_MI2S_RX", "TERT_TDM_TX_0", "USB_AUDIO_RX",
 	"INT0_MI2S_RX", "INT4_MI2S_RX", "INT3_MI2S_TX", "DISPLAY_PORT",
-	"PRI_TDM_RX_1"};
+	"PRI_TDM_RX_1", "QUIN_MI2S_RX"};
 
 static const struct soc_enum msm_route_ec_ref_rx_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ec_ref_rx), ec_ref_rx),
@@ -9443,6 +9447,10 @@ static const struct snd_kcontrol_new mmul5_mixer_controls[] = {
 	msm_routing_put_audio_mixer),
 	SOC_DOUBLE_EXT("INT3_MI2S_TX", SND_SOC_NOPM,
 	MSM_BACKEND_DAI_INT3_MI2S_TX,
+	MSM_FRONTEND_DAI_MULTIMEDIA5, 1, 0, msm_routing_get_audio_mixer,
+	msm_routing_put_audio_mixer),
+	SOC_DOUBLE_EXT("QUIN_MI2S_TX", SND_SOC_NOPM,
+	MSM_BACKEND_DAI_QUINARY_MI2S_TX,
 	MSM_FRONTEND_DAI_MULTIMEDIA5, 1, 0, msm_routing_get_audio_mixer,
 	msm_routing_put_audio_mixer),
 	SOC_DOUBLE_EXT("PRI_TDM_TX_0", SND_SOC_NOPM,
@@ -18470,6 +18478,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"MultiMedia6 Mixer", "QUAT_MI2S_TX", "QUAT_MI2S_TX"},
 	{"MultiMedia1 Mixer", "QUIN_MI2S_TX", "QUIN_MI2S_TX"},
 	{"MultiMedia2 Mixer", "QUIN_MI2S_TX", "QUIN_MI2S_TX"},
+	{"MultiMedia5 Mixer", "QUIN_MI2S_TX", "QUIN_MI2S_TX"},
 	{"MultiMedia1 Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
 	{"MultiMedia2 Mixer", "TERT_MI2S_TX", "TERT_MI2S_TX"},
 	{"MultiMedia1 Mixer", "INT2_MI2S_TX", "INT2_MI2S_TX"},
@@ -19267,6 +19276,7 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"AUDIO_REF_EC_UL1 MUX", "QUAT_TDM_RX_1", "QUAT_TDM_RX_1"},
 	{"AUDIO_REF_EC_UL1 MUX", "QUAT_TDM_RX_2", "QUAT_TDM_RX_2"},
 	{"AUDIO_REF_EC_UL1 MUX", "TERT_TDM_TX_0", "TERT_TDM_TX_0"},
+	{"AUDIO_REF_EC_UL1 MUX", "QUIN_MI2S_RX", "QUIN_MI2S_RX"},
 
 	{"AUDIO_REF_EC_UL2 MUX", "PRI_MI2S_TX", "PRI_MI2S_TX"},
 	{"AUDIO_REF_EC_UL2 MUX", "SEC_MI2S_TX", "SEC_MI2S_TX"},
