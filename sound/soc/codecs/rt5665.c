@@ -4767,15 +4767,17 @@ static int rt5665_set_dai_pll(struct snd_soc_dai *dai, int pll_id, int Source,
 		return ret;
 	}
 
-	dev_dbg(codec->dev, "m_bypass=%d m=%d n=%d k=%d\n",
+	dev_dbg(codec->dev, "m_bypass=%d m=%d n=%d k_bypass=%d k=%d\n",
 		pll_code.m_bp, (pll_code.m_bp ? 0 : pll_code.m_code),
-		pll_code.n_code, pll_code.k_code);
+		pll_code.n_code, pll_code.k_bp,
+		(pll_code.k_bp ? 0 : pll_code.k_code));
 
 	snd_soc_write(codec, RT5665_PLL_CTRL_1,
 		pll_code.n_code << RT5665_PLL_N_SFT | pll_code.k_code);
 	snd_soc_write(codec, RT5665_PLL_CTRL_2,
 		(pll_code.m_bp ? 0 : pll_code.m_code) << RT5665_PLL_M_SFT |
-		pll_code.m_bp << RT5665_PLL_M_BP_SFT);
+		pll_code.m_bp << RT5665_PLL_M_BP_SFT |
+		pll_code.k_bp << RT5665_PLL_K_BP_SFT);
 
 	rt5665->pll_in = freq_in;
 	rt5665->pll_out = freq_out;

@@ -1235,12 +1235,21 @@ int snd_soc_dapm_dai_get_connected_widgets(struct snd_soc_dai *dai, int stream,
 		w->endpoints[SND_SOC_DAPM_DIR_OUT] = -1;
 	}
 
-	if (stream == SNDRV_PCM_STREAM_PLAYBACK)
+	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		if (dai->playback_widget == NULL) {
+			mutex_unlock(&card->dapm_mutex);
+			return -EINVAL;
+		}
 		paths = is_connected_output_ep(dai->playback_widget, &widgets,
 				custom_stop_condition);
-	else
+	} else {
+		if (dai->capture_widget == NULL) {
+			mutex_unlock(&card->dapm_mutex);
+			return -EINVAL;
+		}
 		paths = is_connected_input_ep(dai->capture_widget, &widgets,
 				custom_stop_condition);
+	}
 
 	/* Drop starting point */
 	list_del(widgets.next);
