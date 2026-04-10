@@ -17,15 +17,6 @@
 #include "sdm450-sec-gta2xllte_audio.dtsi"
 #include "sdm450-sec-gta2xllte-input-common.dtsi"
 
-
-/ {
-	reserved-memory {
-		camera_mem: camera_mem_region {
-			reg = <0x0 0xC0000000 0x0 0x7A00000>;
-		};
-	};
-};
-
 &soc {
 	/* Thermistor table */
 	sec_thermistor@0 {
@@ -130,13 +121,6 @@
 			(-200)>;
 	};
 
-	qcom,ion {
-		qcom,ion-heap@30 { /* CAMERA HEAP  */
-			reg = <30>;
-			memory-region = <&camera_mem>;
-			qcom,ion-heap-type = "CARVEOUT";
-		};
-	};
 };
 
 &pm8953_gpios {
