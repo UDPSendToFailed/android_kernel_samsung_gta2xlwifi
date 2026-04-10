@@ -874,8 +874,9 @@ static void tzdbg_register_qsee_log_buf(void)
 
 	/* Create ION msm client */
 	g_ion_clnt = msm_ion_client_create("qsee_log");
-	if (g_ion_clnt == NULL) {
+	if (IS_ERR_OR_NULL(g_ion_clnt)) {
 		pr_err("%s: Ion client cannot be created\n", __func__);
+		g_ion_clnt = NULL;
 		return;
 	}
 
