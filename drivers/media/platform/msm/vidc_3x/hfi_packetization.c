@@ -889,7 +889,7 @@ int create_pkt_cmd_session_etb_decoder(
 	pkt->mark_target = input_frame->mark_target;
 	pkt->mark_data = input_frame->mark_data;
 	pkt->offset = input_frame->offset;
-	pkt->alloc_len = input_frame->alloc_len;
+	pkt->alloc_len = input_frame->alloc_len / 2;
 	pkt->filled_len = input_frame->filled_len;
 	pkt->input_tag = input_frame->clnt_data;
 	pkt->packet_buffer = (u32)input_frame->device_addr;
