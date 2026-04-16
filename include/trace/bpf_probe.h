@@ -36,7 +36,10 @@
 					 (void)5)))))
 #define __CAST_TO_U64(x) ({ \
 	typeof(x) __src = (x); \
+	_Pragma("clang diagnostic push") \
+	_Pragma("clang diagnostic ignored \"-Wsizeof-array-argument\"") \
 	UINTTYPE(sizeof(x)) __dst; \
+	_Pragma("clang diagnostic pop") \
 	memcpy(&__dst, &__src, sizeof(__dst)); \
 	(u64)__dst; })
 
