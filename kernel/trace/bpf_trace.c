@@ -690,6 +690,7 @@ tracing_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 	}
 }
 
+#ifdef CONFIG_KPROBE_EVENT
 static const struct bpf_func_proto *
 kprobe_prog_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 {
@@ -724,6 +725,7 @@ const struct bpf_verifier_ops kprobe_verifier_ops = {
 
 const struct bpf_prog_ops kprobe_prog_ops = {
 };
+#endif /* CONFIG_KPROBE_EVENT */
 
 BPF_CALL_5(bpf_perf_event_output_tp, void *, tp_buff, struct bpf_map *, map,
 	   u64, flags, void *, data, u64, size)

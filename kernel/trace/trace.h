@@ -623,8 +623,13 @@ void trace_graph_return(struct ftrace_graph_ret *trace);
 int trace_graph_entry(struct ftrace_graph_ent *trace);
 void set_graph_array(struct trace_array *tr);
 
+#ifdef CONFIG_CONTEXT_SWITCH_TRACER
 void tracing_start_cmdline_record(void);
 void tracing_stop_cmdline_record(void);
+#else
+static inline void tracing_start_cmdline_record(void) { }
+static inline void tracing_stop_cmdline_record(void) { }
+#endif
 int register_tracer(struct tracer *type);
 int is_tracing_stopped(void);
 

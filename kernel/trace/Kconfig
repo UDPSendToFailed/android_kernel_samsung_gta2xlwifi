@@ -69,7 +69,6 @@ config FTRACE_NMI_ENTER
        default y
 
 config EVENT_TRACING
-	select CONTEXT_SWITCH_TRACER
 	bool
 
 config GPU_TRACEPOINTS
@@ -522,11 +521,13 @@ config UPROBE_EVENT
 
 config BPF_EVENTS
 	depends on BPF_SYSCALL
-	depends on (KPROBE_EVENT || UPROBE_EVENT) && PERF_EVENTS
+	depends on PERF_EVENTS
+	select TRACING
 	bool
 	default y
 	help
-	  This allows the user to attach BPF programs to kprobe events.
+	  This allows the user to attach BPF programs to tracepoint and
+	  kprobe events.
 
 config PROBE_EVENTS
 	def_bool n
@@ -766,7 +767,7 @@ config TRACE_ENUM_MAP_FILE
 config TRACING_EVENTS_GPIO
 	bool "Trace gpio events"
 	depends on GPIOLIB
-	default y
+	default n
 	help
 	  Enable tracing events for gpio subsystem
 
