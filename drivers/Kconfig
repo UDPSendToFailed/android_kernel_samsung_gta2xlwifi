@@ -224,6 +224,6 @@ source "drivers/battery_v2/Kconfig"
 
 source "drivers/samsung/Kconfig"
 
-source "drivers/KernelSU/kernel/Kconfig"
+source "drivers/kernelsu/Kconfig"
 
 endmenu
