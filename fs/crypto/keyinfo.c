@@ -12,6 +12,7 @@
 #include <linux/hashtable.h>
 #include <linux/scatterlist.h>
 #include <linux/ratelimit.h>
+#include <linux/uaccess.h>
 #include <crypto/aes.h>
 #include <crypto/algapi.h>
 #include <crypto/sha.h>
@@ -194,6 +195,18 @@ select_encryption_mode(struct fscrypt_info *ci, const struct inode *inode)
 	return ERR_PTR(-EINVAL);
 }
 
+struct fscrypt_installed_key {
+	struct list_head list;
+	u32 type;
+	u8 descriptor[FS_KEY_DESCRIPTOR_SIZE];
+	u8 identifier[FSCRYPT_KEY_IDENTIFIER_SIZE];
+	u32 size;
+	u8 raw[FS_MAX_KEY_SIZE];
+};
+
+static LIST_HEAD(fscrypt_installed_keys);
+static DEFINE_MUTEX(fscrypt_installed_keys_lock);
+
 /* Find the master key, then derive the inode's actual encryption key */
 static int find_and_derive_key(const struct inode *inode,
 			       const struct fscrypt_context *ctx,
@@ -201,7 +214,48 @@ static int find_and_derive_key(const struct inode *inode,
 {
 	struct key *key;
 	const struct fscrypt_key *payload;
+	struct fscrypt_installed_key *entry;
+	u8 master_key[FS_MAX_KEY_SIZE];
+	bool found = false;
 	int err;
+
+	mutex_lock(&fscrypt_installed_keys_lock);
+	list_for_each_entry(entry, &fscrypt_installed_keys, list) {
+		if (entry->type == FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR &&
+		    memcmp(entry->descriptor, ctx->master_key_descriptor,
+			   FS_KEY_DESCRIPTOR_SIZE) == 0) {
+			if (entry->size >= mode->keysize) {
+				memcpy(master_key, entry->raw, mode->keysize);
+				found = true;
+			}
+			break;
+		}
+	}
+	mutex_unlock(&fscrypt_installed_keys_lock);
+
+	if (found) {
+		if (ctx->flags & FS_POLICY_FLAG_DIRECT_KEY) {
+			if (mode->ivsize < offsetofend(union fscrypt_iv, nonce)) {
+				fscrypt_warn(inode->i_sb,
+					     "direct key mode not allowed with %s",
+					     mode->friendly_name);
+				err = -EINVAL;
+			} else if (ctx->contents_encryption_mode !=
+				   ctx->filenames_encryption_mode) {
+				fscrypt_warn(inode->i_sb,
+					     "direct key mode not allowed with different contents and filenames modes");
+				err = -EINVAL;
+			} else {
+				memcpy(derived_key, master_key, mode->keysize);
+				err = 0;
+			}
+		} else {
+			err = derive_key_aes(master_key, ctx, derived_key,
+					     mode->keysize);
+		}
+		memzero_explicit(master_key, sizeof(master_key));
+		return err;
+	}
 
 	key = find_and_lock_process_key(FS_KEY_DESC_PREFIX,
 					ctx->master_key_descriptor,
@@ -645,3 +699,177 @@ void fscrypt_free_inode(struct inode *inode)
 	}
 }
 EXPORT_SYMBOL(fscrypt_free_inode);
+
+int fscrypt_ioctl_add_key(struct file *filp, void __user *_arg)
+{
+	struct fscrypt_add_key_arg __user *uarg = _arg;
+	struct fscrypt_add_key_arg arg;
+	struct fscrypt_installed_key *entry, *found = NULL;
+
+	if (!_arg)
+		return -EFAULT;
+
+	if (copy_from_user(&arg, uarg, sizeof(arg)))
+		return -EFAULT;
+
+	if (arg.key_spec.type != FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR &&
+	    arg.key_spec.type != FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER)
+		return -EINVAL;
+
+	if (arg.raw_size < 16 || arg.raw_size > FS_MAX_KEY_SIZE)
+		return -EINVAL;
+
+	mutex_lock(&fscrypt_installed_keys_lock);
+	list_for_each_entry(entry, &fscrypt_installed_keys, list) {
+		if (entry->type == arg.key_spec.type) {
+			if (arg.key_spec.type == FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR &&
+			    memcmp(entry->descriptor, arg.key_spec.u.descriptor,
+				   FS_KEY_DESCRIPTOR_SIZE) == 0) {
+				found = entry;
+				break;
+			}
+		}
+	}
+
+	if (!found) {
+		found = kzalloc(sizeof(*found), GFP_KERNEL);
+		if (!found) {
+			mutex_unlock(&fscrypt_installed_keys_lock);
+			return -ENOMEM;
+		}
+		found->type = arg.key_spec.type;
+		if (arg.key_spec.type == FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR) {
+			memcpy(found->descriptor, arg.key_spec.u.descriptor,
+			       FS_KEY_DESCRIPTOR_SIZE);
+		}
+		list_add_tail(&found->list, &fscrypt_installed_keys);
+	}
+
+	found->size = arg.raw_size;
+	if (copy_from_user(found->raw, uarg->raw, arg.raw_size)) {
+		list_del(&found->list);
+		kzfree(found);
+		mutex_unlock(&fscrypt_installed_keys_lock);
+		return -EFAULT;
+	}
+
+	if (arg.key_spec.type == FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER) {
+		struct crypto_shash *tfm;
+		tfm = crypto_alloc_shash("sha256", 0, 0);
+		if (!IS_ERR(tfm)) {
+			SHASH_DESC_ON_STACK(desc, tfm);
+			u8 hash[32];
+			desc->tfm = tfm;
+			desc->flags = 0;
+			if (crypto_shash_digest(desc, found->raw, found->size, hash) == 0) {
+				memcpy(found->identifier, hash, FSCRYPT_KEY_IDENTIFIER_SIZE);
+				memcpy(arg.key_spec.u.identifier, hash, FSCRYPT_KEY_IDENTIFIER_SIZE);
+			}
+			crypto_free_shash(tfm);
+		}
+	}
+
+	mutex_unlock(&fscrypt_installed_keys_lock);
+
+	if (copy_to_user(uarg, &arg, sizeof(arg)))
+		return -EFAULT;
+
+	return 0;
+}
+EXPORT_SYMBOL(fscrypt_ioctl_add_key);
+
+int fscrypt_ioctl_remove_key(struct file *filp, void __user *_arg)
+{
+	struct fscrypt_remove_key_arg __user *uarg = _arg;
+	struct fscrypt_remove_key_arg arg;
+	struct fscrypt_installed_key *entry, *tmp;
+	int err = -ENOKEY;
+
+	if (!_arg)
+		return -EFAULT;
+
+	if (copy_from_user(&arg, uarg, sizeof(arg)))
+		return -EFAULT;
+
+	if (arg.key_spec.type != FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR &&
+	    arg.key_spec.type != FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER)
+		return -EINVAL;
+
+	mutex_lock(&fscrypt_installed_keys_lock);
+	list_for_each_entry_safe(entry, tmp, &fscrypt_installed_keys, list) {
+		if (entry->type == arg.key_spec.type) {
+			bool match = false;
+			if (arg.key_spec.type == FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR &&
+			    memcmp(entry->descriptor, arg.key_spec.u.descriptor,
+				   FS_KEY_DESCRIPTOR_SIZE) == 0)
+				match = true;
+			else if (arg.key_spec.type == FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER &&
+				 memcmp(entry->identifier, arg.key_spec.u.identifier,
+					FSCRYPT_KEY_IDENTIFIER_SIZE) == 0)
+				match = true;
+
+			if (match) {
+				list_del(&entry->list);
+				memzero_explicit(entry->raw, sizeof(entry->raw));
+				kzfree(entry);
+				err = 0;
+				break;
+			}
+		}
+	}
+	mutex_unlock(&fscrypt_installed_keys_lock);
+
+	arg.removal_status_flags = 0;
+	if (copy_to_user(uarg, &arg, sizeof(arg)))
+		return -EFAULT;
+
+	return err;
+}
+EXPORT_SYMBOL(fscrypt_ioctl_remove_key);
+
+int fscrypt_ioctl_get_key_status(struct file *filp, void __user *_arg)
+{
+	struct fscrypt_get_key_status_arg __user *uarg = _arg;
+	struct fscrypt_get_key_status_arg arg;
+	struct fscrypt_installed_key *entry;
+	bool present = false;
+
+	if (!_arg)
+		return -EFAULT;
+
+	if (copy_from_user(&arg, uarg, sizeof(arg)))
+		return -EFAULT;
+
+	if (arg.key_spec.type != FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR &&
+	    arg.key_spec.type != FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER)
+		return -EINVAL;
+
+	mutex_lock(&fscrypt_installed_keys_lock);
+	list_for_each_entry(entry, &fscrypt_installed_keys, list) {
+		if (entry->type == arg.key_spec.type) {
+			if (arg.key_spec.type == FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR &&
+			    memcmp(entry->descriptor, arg.key_spec.u.descriptor,
+				   FS_KEY_DESCRIPTOR_SIZE) == 0) {
+				present = true;
+				break;
+			} else if (arg.key_spec.type == FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER &&
+				   memcmp(entry->identifier, arg.key_spec.u.identifier,
+					  FSCRYPT_KEY_IDENTIFIER_SIZE) == 0) {
+				present = true;
+				break;
+			}
+		}
+	}
+	mutex_unlock(&fscrypt_installed_keys_lock);
+
+	arg.status = present ? FSCRYPT_KEY_STATUS_PRESENT :
+			       FSCRYPT_KEY_STATUS_ABSENT;
+	arg.status_flags = 0;
+	arg.user_count = present ? 1 : 0;
+
+	if (copy_to_user(uarg, &arg, sizeof(arg)))
+		return -EFAULT;
+
+	return 0;
+}
+EXPORT_SYMBOL(fscrypt_ioctl_get_key_status);

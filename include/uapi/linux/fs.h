@@ -289,6 +289,56 @@ struct fscrypt_policy {
 #define FS_IOC_SET_ENCRYPTION_POLICY	_IOR('f', 19, struct fscrypt_policy)
 #define FS_IOC_GET_ENCRYPTION_PWSALT	_IOW('f', 20, __u8[16])
 #define FS_IOC_GET_ENCRYPTION_POLICY	_IOW('f', 21, struct fscrypt_policy)
+#define FS_IOC_GET_ENCRYPTION_POLICY_EX	_IOWR('f', 22, __u8[9])
+#define FS_IOC_ADD_ENCRYPTION_KEY	_IOWR('f', 23, struct fscrypt_add_key_arg)
+#define FS_IOC_REMOVE_ENCRYPTION_KEY	_IOWR('f', 24, struct fscrypt_remove_key_arg)
+#define FS_IOC_REMOVE_ENCRYPTION_KEY_ALL_USERS	_IOWR('f', 25, struct fscrypt_remove_key_arg)
+#define FS_IOC_GET_ENCRYPTION_KEY_STATUS	_IOWR('f', 26, struct fscrypt_get_key_status_arg)
+
+#define FSCRYPT_KEY_SPEC_TYPE_DESCRIPTOR	1
+#define FSCRYPT_KEY_SPEC_TYPE_IDENTIFIER	2
+
+#define FSCRYPT_KEY_DESCRIPTOR_SIZE		8
+#define FSCRYPT_KEY_IDENTIFIER_SIZE		16
+
+struct fscrypt_key_specifier {
+	__u32 type;
+	__u32 __reserved;
+	union {
+		__u8 __reserved[32];
+		__u8 descriptor[FS_KEY_DESCRIPTOR_SIZE];
+		__u8 identifier[FSCRYPT_KEY_IDENTIFIER_SIZE];
+	} u;
+};
+
+struct fscrypt_add_key_arg {
+	struct fscrypt_key_specifier key_spec;
+	__u32 raw_size;
+	__u32 key_id;
+	__u32 flags;
+	__u32 __reserved[6];
+	__u32 __flags;
+	__u8 raw[];
+};
+
+struct fscrypt_remove_key_arg {
+	struct fscrypt_key_specifier key_spec;
+	__u32 removal_status_flags;
+	__u32 __reserved[5];
+};
+
+struct fscrypt_get_key_status_arg {
+	struct fscrypt_key_specifier key_spec;
+	__u32 __reserved[6];
+#define FSCRYPT_KEY_STATUS_ABSENT		1
+#define FSCRYPT_KEY_STATUS_PRESENT		2
+#define FSCRYPT_KEY_STATUS_INCOMPLETELY_REMOVED	3
+	__u32 status;
+#define FSCRYPT_KEY_STATUS_FLAG_ADDED_BY_SELF	0x00000001
+	__u32 status_flags;
+	__u32 user_count;
+	__u32 __out_reserved[13];
+};
 
 /* Parameters for passing an encryption key into the kernel keyring */
 #define FS_KEY_DESC_PREFIX		"fscrypt:"
