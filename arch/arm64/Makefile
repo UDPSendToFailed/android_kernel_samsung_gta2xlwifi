@@ -132,8 +132,6 @@ ifeq ($(cc-name),clang)
 KBUILD_CFLAGS += $(call cc-disable-warning, asm-operand-widths)
 # Tune for Cortex-A53 in-order pipeline (SDM450 = 8x A53 @ 1.8GHz)
 KBUILD_CFLAGS += -mcpu=cortex-a53
-# Polyhedral loop optimizer — improves loop-heavy code (crypto, mm, compression)
-KBUILD_CFLAGS += -mllvm -polly
 # Disable warnings about unsafe use of const initializers in C++ code, which is common in the kernel and not actually unsafe.
 KBUILD_CFLAGS += -Wno-default-const-init-field-unsafe
 KBUILD_CFLAGS += -Wno-default-const-init-var-unsafe
