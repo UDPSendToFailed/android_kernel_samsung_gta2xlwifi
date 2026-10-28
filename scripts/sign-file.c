@@ -27,7 +27,10 @@
 #include <openssl/evp.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
-#include <openssl/engine.h>
+#if !defined(OPENSSL_NO_ENGINE)
+# define USE_PKCS11_ENGINE
+# include <openssl/engine.h>
+#endif
 
 /*
  * OpenSSL 3.0 deprecates the OpenSSL's ENGINE API.
@@ -142,6 +145,7 @@ static EVP_PKEY *read_private_key(const char *private_key_name)
 	EVP_PKEY *private_key;
 
 	if (!strncmp(private_key_name, "pkcs11:", 7)) {
+#if defined(USE_PKCS11_ENGINE)
 		ENGINE *e;
 
 		ENGINE_load_builtin_engines();
@@ -158,6 +162,10 @@ static EVP_PKEY *read_private_key(const char *private_key_name)
 		private_key = ENGINE_load_private_key(e, private_key_name,
 						      NULL, NULL);
 		ERR(!private_key, "%s", private_key_name);
+#else
+		fprintf(stderr, "no pkcs11 engine available\n");
+		exit(1);
+#endif
 	} else {
 		BIO *b;
 
