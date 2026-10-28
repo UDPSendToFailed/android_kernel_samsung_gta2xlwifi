@@ -8,6 +8,7 @@
 #include <linux/bpf.h>
 #include <net/bpf_sk_storage.h>
 #include <net/sock.h>
+#include <net/inet_sock.h>
 #include <uapi/linux/btf.h>
 
 static atomic_t cache_idx;
@@ -833,6 +834,13 @@ BPF_CALL_4(bpf_sk_storage_get, struct bpf_map *, map, struct sock *, sk,
 {
 	struct bpf_sk_storage_data *sdata;
 
+	if (!sk)
+		return (unsigned long)NULL;
+
+	sk = sk_to_full_sk(sk);
+	if (!sk)
+		return (unsigned long)NULL;
+
 	if (flags > BPF_SK_STORAGE_GET_F_CREATE)
 		return (unsigned long)NULL;
 
@@ -861,6 +869,13 @@ BPF_CALL_4(bpf_sk_storage_get, struct bpf_map *, map, struct sock *, sk,
 
 BPF_CALL_2(bpf_sk_storage_delete, struct bpf_map *, map, struct sock *, sk)
 {
+	if (!sk)
+		return -EINVAL;
+
+	sk = sk_to_full_sk(sk);
+	if (!sk)
+		return -ENOENT;
+
 	if (atomic_inc_not_zero(&sk->sk_refcnt)) {
 		int err;
 
@@ -888,7 +903,7 @@ const struct bpf_func_proto bpf_sk_storage_get_proto = {
 	.gpl_only	= false,
 	.ret_type	= RET_PTR_TO_MAP_VALUE_OR_NULL,
 	.arg1_type	= ARG_CONST_MAP_PTR,
-	.arg2_type	= ARG_PTR_TO_SOCKET,
+	.arg2_type	= ARG_PTR_TO_SOCK_COMMON,
 	.arg3_type	= ARG_PTR_TO_MAP_VALUE_OR_NULL,
 	.arg4_type	= ARG_ANYTHING,
 };
@@ -898,5 +913,23 @@ const struct bpf_func_proto bpf_sk_storage_delete_proto = {
 	.gpl_only	= false,
 	.ret_type	= RET_INTEGER,
 	.arg1_type	= ARG_CONST_MAP_PTR,
-	.arg2_type	= ARG_PTR_TO_SOCKET,
+	.arg2_type	= ARG_PTR_TO_SOCK_COMMON,
+};
+
+const struct bpf_func_proto bpf_sk_storage_get_cg_sock_proto = {
+	.func		= bpf_sk_storage_get,
+	.gpl_only	= false,
+	.ret_type	= RET_PTR_TO_MAP_VALUE_OR_NULL,
+	.arg1_type	= ARG_CONST_MAP_PTR,
+	.arg2_type	= ARG_PTR_TO_CTX,
+	.arg3_type	= ARG_PTR_TO_MAP_VALUE_OR_NULL,
+	.arg4_type	= ARG_ANYTHING,
+};
+
+const struct bpf_func_proto bpf_sk_storage_delete_cg_sock_proto = {
+	.func		= bpf_sk_storage_delete,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+	.arg1_type	= ARG_CONST_MAP_PTR,
+	.arg2_type	= ARG_PTR_TO_CTX,
 };
