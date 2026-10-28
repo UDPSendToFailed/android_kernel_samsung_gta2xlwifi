@@ -197,6 +197,11 @@ int bpf_map_precharge_memlock(u32 pages)
 	struct user_struct *user = get_current_user();
 	unsigned long memlock_limit, cur;
 
+	if (capable(CAP_SYS_ADMIN) || capable(CAP_IPC_LOCK)) {
+		free_uid(user);
+		return 0;
+	}
+
 	memlock_limit = rlimit(RLIMIT_MEMLOCK) >> PAGE_SHIFT;
 	cur = atomic_long_read(&user->locked_vm);
 	free_uid(user);
@@ -208,6 +213,11 @@ int bpf_map_precharge_memlock(u32 pages)
 static int bpf_charge_memlock(struct user_struct *user, u32 pages)
 {
 	unsigned long memlock_limit = rlimit(RLIMIT_MEMLOCK) >> PAGE_SHIFT;
+
+	if (capable(CAP_SYS_ADMIN) || capable(CAP_IPC_LOCK)) {
+		atomic_long_add(pages, &user->locked_vm);
+		return 0;
+	}
 
 	if (atomic_long_add_return(pages, &user->locked_vm) > memlock_limit) {
 		atomic_long_sub(pages, &user->locked_vm);
@@ -1301,6 +1311,12 @@ int __bpf_prog_charge(struct user_struct *user, u32 pages)
 {
 	unsigned long memlock_limit = rlimit(RLIMIT_MEMLOCK) >> PAGE_SHIFT;
 	unsigned long user_bufs;
+
+	if (capable(CAP_SYS_ADMIN) || capable(CAP_IPC_LOCK)) {
+		if (user)
+			atomic_long_add(pages, &user->locked_vm);
+		return 0;
+	}
 
 	if (user) {
 		user_bufs = atomic_long_add_return(pages, &user->locked_vm);
