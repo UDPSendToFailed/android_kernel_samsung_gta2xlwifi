@@ -2779,6 +2779,18 @@ static void sec_bat_get_battery_info(
 {
 	union power_supply_propval value = {0, };
 
+	sec_bat_get_temperature_info(battery);
+
+	/*
+	 * Query POWER_SUPPLY_PROP_CAPACITY first so s2mu004_get_rawsoc()
+	 * populates the fuelgauge's 1-second cache (vbat, avg_vbat, curr,
+	 * avg_current) before the individual property queries below run.
+	 */
+	value.intval = 0;
+	psy_do_property(battery->pdata->fuelgauge_name, get,
+			POWER_SUPPLY_PROP_CAPACITY, value);
+	battery->capacity = value.intval;
+
 	psy_do_property(battery->pdata->fuelgauge_name, get,
 		POWER_SUPPLY_PROP_VOLTAGE_NOW, value);
 	battery->voltage_now = value.intval;
@@ -2818,16 +2830,6 @@ static void sec_bat_get_battery_info(
 		psy_do_property(battery->pdata->wireless_charger_name, set,
 			POWER_SUPPLY_PROP_ENERGY_NOW, value);
 	}
-
-	sec_bat_get_temperature_info(battery);
-
-	/* To get SOC value (NOT raw SOC), need to reset value */
-	value.intval = 0;
-	psy_do_property(battery->pdata->fuelgauge_name, get,
-			POWER_SUPPLY_PROP_CAPACITY, value);
-	/* if the battery status was full, and SOC wasn't 100% yet,
-		then ignore FG SOC, and report (previous SOC +1)% */
-	battery->capacity = value.intval;
 
 	dev_dbg(battery->dev,
 		"%s:Vnow(%dmV),Inow(%dmA),Imax(%dmA),Ichg(%dmA),SOC(%d%%),"

@@ -843,12 +843,17 @@ static int s2mu004_chg_get_property(struct power_supply *psy, enum power_supply_
 		val->intval = s2mu004_get_charging_health(charger);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		val->intval = s2mu004_get_input_current_limit(charger);
+		if (charger->input_current > 0)
+			val->intval = charger->input_current;
+		else
+			val->intval = s2mu004_get_input_current_limit(charger);
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
 		if (charger->charging_current) {
-			aicr = s2mu004_get_input_current_limit(charger);
+			aicr = (charger->input_current > 0) ?
+				charger->input_current :
+				s2mu004_get_input_current_limit(charger);
 			chg_curr = s2mu004_get_fast_charging_current(charger);
 			val->intval = MINVAL(aicr, chg_curr);
 		} else
@@ -864,7 +869,10 @@ static int s2mu004_chg_get_property(struct power_supply *psy, enum power_supply_
 		break;
 #if defined(CONFIG_BATTERY_SWELLING)
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		val->intval = s2mu004_get_regulation_voltage(charger);
+		if (charger->pdata->chg_float_voltage > 0)
+			val->intval = charger->pdata->chg_float_voltage;
+		else
+			val->intval = s2mu004_get_regulation_voltage(charger);
 		break;
 #endif
 #if defined(CONFIG_AFC_CHARGER_MODE)

@@ -556,15 +556,13 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 	int target_soc = 0;
 	int float_voltage = 0;
 	int scaled_soc = 0;
-
-	/* SOC VM Monitoring For debugging SOC error */
-	u8 r_monoutsel;
-	u8 mount_data[2];
-	u32 mount_compliment;
-	int rvmsoc;
 #if !defined(CONFIG_SEC_FACTORY)
 	int info_soc;
 #endif
+
+	if (fuelgauge->probe_done && fuelgauge->cache_jiffies &&
+	    time_before(jiffies, fuelgauge->cache_jiffies + HZ))
+		return min(fuelgauge->info.soc, 10000);
 
 	s2mu004_read_reg_byte(fuelgauge->i2c, 0x1F, &por_state);
 	s2mu004_read_reg_byte(fuelgauge->i2c, 0x4F, &reg_OTP_4F);
@@ -618,21 +616,6 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 			break;
 	}
 	mutex_unlock(&fuelgauge->fg_lock);
-	/* SOC VM Monitoring - only when debug logging enabled */
-	if (fuelgauge->pdata->fg_log_enable) {
-		mutex_lock(&fuelgauge->fg_lock);
-		s2mu004_read_reg_byte(fuelgauge->i2c, S2MU004_REG_MONOUT_SEL, &r_monoutsel);
-		s2mu004_write_reg_byte(fuelgauge->i2c, S2MU004_REG_MONOUT_SEL, 0x02);
-		usleep_range(1000, 2000);
-		if (s2mu004_read_reg(fuelgauge->i2c, S2MU004_REG_MONOUT, mount_data) < 0) {
-			mutex_unlock(&fuelgauge->fg_lock);
-			return -EINVAL;
-		}
-		s2mu004_write_reg_byte(fuelgauge->i2c, S2MU004_REG_MONOUT_SEL, r_monoutsel);
-		mutex_unlock(&fuelgauge->fg_lock);
-		mount_compliment  = ((mount_data[0] + (mount_data[1] << 8)) * 10000) >> 12;
-		rvmsoc = mount_compliment;
-	}
 	if (fg_reset && charging_enabled) {
 		value.intval = SEC_BAT_CHG_MODE_CHARGING;
 		psy_do_property("s2mu004-charger", set, POWER_SUPPLY_PROP_CHARGING_ENABLED, value);
@@ -700,8 +683,9 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 			dev_dbg(&fuelgauge->i2c->dev, "%s: FG is in current mode\n", __func__);
 		}
 	}
-	avg_vbat =  s2mu004_get_avgvbat(fuelgauge);
 	vbat = s2mu004_get_vbat(fuelgauge);
+	avg_vbat = fuelgauge->cached_avgvbat ?
+		(vbat / 2 + fuelgauge->cached_avgvbat / 2) : vbat;
 	curr = s2mu004_get_current(fuelgauge);
 
 	psy_do_property("s2mu004-charger", get, POWER_SUPPLY_PROP_VOLTAGE_MAX, value);
@@ -790,8 +774,6 @@ static int s2mu004_get_rawsoc(struct s2mu004_fuelgauge_data *fuelgauge)
 	fuelgauge->cached_avgvbat = avg_vbat;
 	fuelgauge->cache_jiffies = jiffies;
 
-	/* S2MU004 FG debug */
-	if (fuelgauge->pdata->fg_log_enable)
 	return min(fuelgauge->info.soc, 10000);
 err:
 	mutex_unlock(&fuelgauge->fg_lock);
@@ -919,7 +901,6 @@ static int s2mu004_maintain_avgcurrent(struct s2mu004_fuelgauge_data *fuelgauge)
 static int s2mu004_get_vbat(struct s2mu004_fuelgauge_data *fuelgauge)
 {
 	u8 data[2];
-	u8 vbat_src;
 	u32 vbat = 0;
 
 	/* Return cached value if fresh (within 1 second) */
@@ -930,7 +911,6 @@ static int s2mu004_get_vbat(struct s2mu004_fuelgauge_data *fuelgauge)
 	if (s2mu004_read_reg(fuelgauge->i2c, S2MU004_REG_RVBAT, data) < 0)
 		return -EINVAL;
 	vbat = ((data[0] + (data[1] << 8)) * 1000) >> 13;
-	s2mu004_read_reg_byte(fuelgauge->i2c, S2MU004_REG_CTRL0, &vbat_src);
 
 	return vbat;
 }
