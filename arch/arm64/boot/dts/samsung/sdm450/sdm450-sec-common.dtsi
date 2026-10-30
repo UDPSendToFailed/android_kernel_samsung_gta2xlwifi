@@ -14,13 +14,6 @@
 
 / {
 	reserved-memory {
-		/* CONFIG_SEC_DEBUG reserves 8MB */
-		sec_debug_region: sec_debug_region@0 {
-			compatible = "removed-dma-pool";
-			no-map;
-			reg = <0x0 0x85000000 0x0 0x00800000>;
-		};
-		
 		/* sec_debug_low_region reserves 4MB
 		   This region is reserved if only debuglevel low */
 		sec_debug_low_region: sec_debug_low_region@0 {
@@ -36,12 +29,6 @@
 			no-map;
 			reg = <0x0 0x8F600000 0x0 0x00300000>;
 			label = "lk_mem";
-		};
-
-		ss_plog@85D00000 {
-			compatible = "ss_plog";
-			no-map;
-			reg = <0x0 0x85D00000 0x0 0x00400000>;
 		};
 
 		/*
@@ -113,7 +100,7 @@
 			compatible = "shared-dma-pool";
 			reusable;
 			alignment = <0 0x400000>;
-			size = <0 0xb400000>;
+			size = <0 0x6000000>;
 		};
 
 		/delete-node/ venus_region@0;
