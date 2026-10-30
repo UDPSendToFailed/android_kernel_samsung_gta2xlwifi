@@ -388,6 +388,7 @@ static int __init devfreq_boost_init(void)
 		goto destroy_wq;
 	}
 
+	d->screen_awake = true;
 	d->fb_notif.notifier_call = fb_notifier_cb;
 	d->fb_notif.priority = INT_MAX;
 	ret = fb_register_client(&d->fb_notif);
