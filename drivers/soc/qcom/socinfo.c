@@ -2041,26 +2041,26 @@ void smem_get_ddr_manufacturer_id(unsigned char *buf)
 	if (manufacturer_id == NULL)
 	{
 		pr_err("[B]%s(%d): Failed to read SMEM_ID_VENDOR2\n", __func__, __LINE__);
-		snprintf((char *)buf, 64, "UNKNOWN");
+		snprintf((char *)buf, sizeof(ddr_vendor), "UNKNOWN");
 		return;
 	}
 
 	switch(*manufacturer_id)
 	{
 		case SAMSUNG:
-			snprintf((char *)buf, 64, "SAMSUNG");
+			snprintf((char *)buf, sizeof(ddr_vendor), "SAMSUNG");
 			break;
 		case ELPIDA:
-			snprintf((char *)buf, 64, "ELPIDA");
+			snprintf((char *)buf, sizeof(ddr_vendor), "ELPIDA");
 			break;
 		case HYNIX:
-			snprintf((char *)buf, 64, "HYNIX");
+			snprintf((char *)buf, sizeof(ddr_vendor), "HYNIX");
 			break;
 		case MICRON:
-			snprintf((char *)buf, 64, "MICRON");
+			snprintf((char *)buf, sizeof(ddr_vendor), "MICRON");
 			break;
 		default:
-			snprintf((char *)buf, 64, "OTHERS");
+			snprintf((char *)buf, sizeof(ddr_vendor), "OTHERS");
 			break;
 	}
 
