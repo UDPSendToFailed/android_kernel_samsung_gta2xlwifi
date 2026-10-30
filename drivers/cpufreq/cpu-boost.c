@@ -38,9 +38,9 @@ static DEFINE_PER_CPU(struct cpu_sync, sync_info);
 
 static struct kthread_work input_boost_work;
 
-static bool input_boost_enabled;
+static bool input_boost_enabled = true;
 
-static unsigned int input_boost_ms = 40;
+static unsigned int input_boost_ms = 150;
 module_param(input_boost_ms, uint, 0644);
 
 static unsigned int sched_boost_on_input;
@@ -168,8 +168,14 @@ static void update_policy_online(void)
 	/* Re-evaluate policy to trigger adjust notifier for online CPUs */
 	get_online_cpus();
 	for_each_online_cpu(i) {
-		pr_debug("Updating policy for CPU%d\n", i);
-		cpufreq_update_policy(i);
+		/*
+		 * Both clusters have synchronous cores, only update
+		 * the frequency for one core in each cluster.
+		 */
+		if (i == 0 || i == 4) {
+			pr_debug("Updating policy for CPU%d\n", i);
+			cpufreq_update_policy(i);
+		}
 	}
 	put_online_cpus();
 }
@@ -330,6 +336,7 @@ static int cpu_boost_init(void)
 	struct sched_param param = { .sched_priority = 2 };
 	cpumask_t sys_bg_mask;
 
+	cpumask_clear(&sys_bg_mask);
 	/* Hardcode the cpumask to bind the kthread to it */
 	for (i = 0; i <= 2; i++) {
 		cpumask_set_cpu(i, &sys_bg_mask);
@@ -360,10 +367,11 @@ static int cpu_boost_init(void)
 	for_each_possible_cpu(cpu) {
 		s = &per_cpu(sync_info, cpu);
 		s->cpu = cpu;
+		s->input_boost_freq = 1804800;
 	}
 	cpufreq_register_notifier(&boost_adjust_nb, CPUFREQ_POLICY_NOTIFIER);
 
 	ret = input_register_handler(&cpuboost_input_handler);
-	return 0;
+	return ret;
 }
 late_initcall(cpu_boost_init);
