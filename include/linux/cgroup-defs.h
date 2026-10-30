@@ -63,6 +63,12 @@ enum {
 	 * specified at mount time and thus is implemented here.
 	 */
 	CGRP_CPUSET_CLONE_CHILDREN,
+
+	/* Control group has to be frozen. */
+	CGRP_FREEZE,
+
+	/* Cgroup is frozen. */
+	CGRP_FROZEN,
 };
 
 /* cgroup_root->flags */
@@ -222,11 +228,33 @@ struct css_set {
 	/* all css_task_iters currently walking this cset */
 	struct list_head task_iters;
 
+	/* number of tasks in this css_set, protected by css_set_lock */
+	int nr_tasks;
+
 	/* dead and being drained, ignore for migration */
 	bool dead;
 
 	/* For RCU-protected deletion */
 	struct rcu_head rcu_head;
+};
+
+struct cgroup_freezer_state {
+	/* Should the cgroup and its descendants be frozen. */
+	bool freeze;
+
+	/* Should the cgroup actually be frozen? */
+	int e_freeze;
+
+	/* Fields below are protected by css_set_lock */
+
+	/* Number of frozen descendant cgroups */
+	int nr_frozen_descendants;
+
+	/*
+	 * Number of tasks, which are counted as frozen:
+	 * frozen, SIGSTOPped, and PTRACEd.
+	 */
+	int nr_frozen_tasks;
 };
 
 struct cgroup {
@@ -315,6 +343,13 @@ struct cgroup {
 
 	/* used to store eBPF programs */
 	struct cgroup_bpf bpf;
+
+	/* Number of live and dying descendants in this cgroup subtree */
+	int nr_descendants;
+	int nr_dying_descendants;
+
+	/* Used to store internal freezer state */
+	struct cgroup_freezer_state freezer;
 
 	/* ids of the ancestors at each level including self */
 	int ancestor_ids[];

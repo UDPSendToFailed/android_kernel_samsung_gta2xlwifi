@@ -1076,7 +1076,9 @@ static int wait_for_vfork_done(struct task_struct *child,
 	int killed;
 
 	freezer_do_not_count();
+	cgroup_enter_frozen();
 	killed = wait_for_completion_killable(vfork);
+	cgroup_leave_frozen(false);
 	freezer_count();
 
 	if (killed) {
@@ -1744,6 +1746,9 @@ static __latent_entropy struct task_struct *copy_process(
 	p->io_context = NULL;
 	p->audit_context = NULL;
 	cgroup_fork(p);
+#ifdef CONFIG_CGROUPS
+	p->frozen = 0;
+#endif
 #ifdef CONFIG_NUMA
 	p->mempolicy = mpol_dup(p->mempolicy);
 	if (IS_ERR(p->mempolicy)) {

@@ -747,6 +747,7 @@ static void css_set_move_task(struct task_struct *task,
 				css_task_iter_advance(it);
 
 		list_del_init(&task->cg_list);
+		from_cset->nr_tasks--;
 		if (!css_set_populated(from_cset))
 			css_set_update_populated(from_cset, false);
 	} else {
@@ -765,6 +766,7 @@ static void css_set_move_task(struct task_struct *task,
 		cgroup_move_task(task, to_cset);
 		list_add_tail(&task->cg_list, use_mg_tasks ? &to_cset->mg_tasks :
 							     &to_cset->tasks);
+		to_cset->nr_tasks++;
 	}
 }
 
@@ -1957,6 +1959,7 @@ static void cgroup_enable_task_cg_lists(void)
 				css_set_update_populated(cset, true);
 			list_add_tail(&p->cg_list, &cset->tasks);
 			get_css_set(cset);
+			cset->nr_tasks++;
 		}
 		spin_unlock(&p->sighand->siglock);
 	} while_each_thread(g, p);
@@ -2597,6 +2600,12 @@ static int cgroup_taskset_migrate(struct cgroup_taskset *tset,
 
 			get_css_set(to_cset);
 			css_set_move_task(task, from_cset, to_cset, true);
+			/*
+			 * If the source or destination cgroup is frozen,
+			 * the task might require to change its state.
+			 */
+			cgroup_freezer_migrate_task(task, from_cset->dfl_cgrp,
+						    to_cset->dfl_cgrp);
 			put_css_set_locked(from_cset);
 		}
 	}
@@ -3559,8 +3568,11 @@ out_unlock:
 
 static int cgroup_events_show(struct seq_file *seq, void *v)
 {
-	seq_printf(seq, "populated %d\n",
-		   cgroup_is_populated(seq_css(seq)->cgroup));
+	struct cgroup *cgrp = seq_css(seq)->cgroup;
+
+	seq_printf(seq, "populated %d\n", cgroup_is_populated(cgrp));
+	seq_printf(seq, "frozen %d\n", test_bit(CGRP_FROZEN, &cgrp->flags));
+
 	return 0;
 }
 
@@ -4103,22 +4115,35 @@ void cgroup_file_notify(struct cgroup_file *cfile)
 }
 
 /**
- * cgroup_task_count - count the number of tasks in a cgroup.
+ * __cgroup_task_count - count the number of tasks in a cgroup. The caller
+ * is responsible for taking the css_set_lock.
  * @cgrp: the cgroup in question
- *
- * Return the number of tasks in the cgroup.  The returned number can be
- * higher than the actual number of tasks due to css_set references from
- * namespace roots and temporary usages.
  */
-static int cgroup_task_count(const struct cgroup *cgrp)
+int __cgroup_task_count(const struct cgroup *cgrp)
 {
 	int count = 0;
 	struct cgrp_cset_link *link;
 
-	spin_lock_irq(&css_set_lock);
+	lockdep_assert_held(&css_set_lock);
+
 	list_for_each_entry(link, &cgrp->cset_links, cset_link)
-		count += atomic_read(&link->cset->refcount);
+		count += link->cset->nr_tasks;
+
+	return count;
+}
+
+/**
+ * cgroup_task_count - count the number of tasks in a cgroup.
+ * @cgrp: the cgroup in question
+ */
+int cgroup_task_count(const struct cgroup *cgrp)
+{
+	int count;
+
+	spin_lock_irq(&css_set_lock);
+	count = __cgroup_task_count(cgrp);
 	spin_unlock_irq(&css_set_lock);
+
 	return count;
 }
 
@@ -5126,6 +5151,345 @@ static ssize_t cgroup_kill_write(struct kernfs_open_file *of, char *buf,
 	return nbytes;
 }
 
+/*
+ * Propagate the cgroup frozen state upwards by the cgroup tree.
+ */
+static void cgroup_propagate_frozen(struct cgroup *cgrp, bool frozen)
+{
+	int desc = 1;
+
+	/*
+	 * If the new state is frozen, some freezing ancestor cgroups may change
+	 * their state too, depending on if all their descendants are frozen.
+	 *
+	 * Otherwise, all ancestor cgroups are forced into the non-frozen state.
+	 */
+	while ((cgrp = cgroup_parent(cgrp))) {
+		if (frozen) {
+			cgrp->freezer.nr_frozen_descendants += desc;
+			if (!test_bit(CGRP_FROZEN, &cgrp->flags) &&
+			    test_bit(CGRP_FREEZE, &cgrp->flags) &&
+			    cgrp->freezer.nr_frozen_descendants ==
+			    cgrp->nr_descendants) {
+				set_bit(CGRP_FROZEN, &cgrp->flags);
+				cgroup_file_notify(&cgrp->events_file);
+				desc++;
+			}
+		} else {
+			cgrp->freezer.nr_frozen_descendants -= desc;
+			if (test_bit(CGRP_FROZEN, &cgrp->flags)) {
+				clear_bit(CGRP_FROZEN, &cgrp->flags);
+				cgroup_file_notify(&cgrp->events_file);
+				desc++;
+			}
+		}
+	}
+}
+
+/*
+ * Revisit the cgroup frozen state.
+ * Checks if the cgroup is really frozen and perform all state transitions.
+ */
+void cgroup_update_frozen(struct cgroup *cgrp)
+{
+	bool frozen;
+
+	lockdep_assert_held(&css_set_lock);
+
+	/*
+	 * If the cgroup has to be frozen (CGRP_FREEZE bit set),
+	 * and all tasks are frozen and/or stopped, let's consider
+	 * the cgroup frozen. Otherwise it's not frozen.
+	 */
+	frozen = test_bit(CGRP_FREEZE, &cgrp->flags) &&
+		cgrp->freezer.nr_frozen_tasks == __cgroup_task_count(cgrp);
+
+	if (frozen) {
+		/* Already there? */
+		if (test_bit(CGRP_FROZEN, &cgrp->flags))
+			return;
+
+		set_bit(CGRP_FROZEN, &cgrp->flags);
+	} else {
+		/* Already there? */
+		if (!test_bit(CGRP_FROZEN, &cgrp->flags))
+			return;
+
+		clear_bit(CGRP_FROZEN, &cgrp->flags);
+	}
+	cgroup_file_notify(&cgrp->events_file);
+
+	/* Update the state of ancestor cgroups. */
+	cgroup_propagate_frozen(cgrp, frozen);
+}
+
+/*
+ * Increment cgroup's nr_frozen_tasks.
+ */
+static void cgroup_inc_frozen_cnt(struct cgroup *cgrp)
+{
+	cgrp->freezer.nr_frozen_tasks++;
+}
+
+/*
+ * Decrement cgroup's nr_frozen_tasks.
+ */
+static void cgroup_dec_frozen_cnt(struct cgroup *cgrp)
+{
+	cgrp->freezer.nr_frozen_tasks--;
+	WARN_ON_ONCE(cgrp->freezer.nr_frozen_tasks < 0);
+}
+
+/*
+ * Enter frozen/stopped state, if not yet there. Update cgroup's counters,
+ * and revisit the state of the cgroup, if necessary.
+ */
+void cgroup_enter_frozen(void)
+{
+	struct cgroup *cgrp;
+
+	if (current->frozen)
+		return;
+
+	spin_lock_irq(&css_set_lock);
+	current->frozen = true;
+	cgrp = task_dfl_cgroup(current);
+	cgroup_inc_frozen_cnt(cgrp);
+	cgroup_update_frozen(cgrp);
+	spin_unlock_irq(&css_set_lock);
+}
+
+/*
+ * Conditionally leave frozen/stopped state. Update cgroup's counters,
+ * and revisit the state of the cgroup, if necessary.
+ *
+ * If always_leave is not set, and the cgroup is freezing,
+ * we're racing with the cgroup freezing. In this case, we don't
+ * drop the frozen counter to avoid a transient switch to
+ * the unfrozen state.
+ */
+void cgroup_leave_frozen(bool always_leave)
+{
+	struct cgroup *cgrp;
+
+	spin_lock_irq(&css_set_lock);
+	cgrp = task_dfl_cgroup(current);
+	if (always_leave || !test_bit(CGRP_FREEZE, &cgrp->flags)) {
+		cgroup_dec_frozen_cnt(cgrp);
+		cgroup_update_frozen(cgrp);
+		WARN_ON_ONCE(!current->frozen);
+		current->frozen = false;
+	}
+	spin_unlock_irq(&css_set_lock);
+
+	if (unlikely(current->frozen)) {
+		/*
+		 * If the task remained in the frozen state,
+		 * make sure it won't reach userspace without
+		 * entering the signal handling loop.
+		 */
+		spin_lock_irq(&current->sighand->siglock);
+		recalc_sigpending();
+		spin_unlock_irq(&current->sighand->siglock);
+	}
+}
+
+/*
+ * Freeze or unfreeze the task by setting or clearing the JOBCTL_TRAP_FREEZE
+ * jobctl bit.
+ */
+static void cgroup_freeze_task(struct task_struct *task, bool freeze)
+{
+	unsigned long flags;
+
+	/* If the task is about to die, don't bother with freezing it. */
+	if (!lock_task_sighand(task, &flags))
+		return;
+
+	if (freeze) {
+		task->jobctl |= JOBCTL_TRAP_FREEZE;
+		signal_wake_up(task, false);
+	} else {
+		task->jobctl &= ~JOBCTL_TRAP_FREEZE;
+		wake_up_process(task);
+	}
+
+	unlock_task_sighand(task, &flags);
+}
+
+/*
+ * Freeze or unfreeze all tasks in the given cgroup.
+ */
+static void cgroup_do_freeze(struct cgroup *cgrp, bool freeze)
+{
+	struct css_task_iter it;
+	struct task_struct *task;
+
+	lockdep_assert_held(&cgroup_mutex);
+
+	spin_lock_irq(&css_set_lock);
+	if (freeze)
+		set_bit(CGRP_FREEZE, &cgrp->flags);
+	else
+		clear_bit(CGRP_FREEZE, &cgrp->flags);
+	spin_unlock_irq(&css_set_lock);
+
+	css_task_iter_start(&cgrp->self, &it);
+	while ((task = css_task_iter_next(&it))) {
+		/*
+		 * Ignore kernel threads here. Freezing cgroups containing
+		 * kthreads isn't supported.
+		 */
+		if (task->flags & PF_KTHREAD)
+			continue;
+		cgroup_freeze_task(task, freeze);
+	}
+	css_task_iter_end(&it);
+
+	/*
+	 * Cgroup state should be revisited here to cover empty leaf cgroups
+	 * and cgroups which descendants are already in the desired state.
+	 */
+	spin_lock_irq(&css_set_lock);
+	if (cgrp->nr_descendants == cgrp->freezer.nr_frozen_descendants)
+		cgroup_update_frozen(cgrp);
+	spin_unlock_irq(&css_set_lock);
+}
+
+/*
+ * Adjust the task state (freeze or unfreeze) and revisit the state of
+ * source and destination cgroups.
+ */
+void cgroup_freezer_migrate_task(struct task_struct *task,
+				 struct cgroup *src, struct cgroup *dst)
+{
+	lockdep_assert_held(&css_set_lock);
+
+	/*
+	 * Kernel threads are not supposed to be frozen at all.
+	 */
+	if (task->flags & PF_KTHREAD)
+		return;
+
+	/*
+	 * Adjust counters of freezing and frozen tasks.
+	 * Note, that if the task is frozen, but the destination cgroup is not
+	 * frozen, we bump both counters to keep them balanced.
+	 */
+	if (task->frozen) {
+		cgroup_inc_frozen_cnt(dst);
+		cgroup_dec_frozen_cnt(src);
+	}
+	cgroup_update_frozen(dst);
+	cgroup_update_frozen(src);
+
+	/*
+	 * Force the task to the desired state.
+	 */
+	cgroup_freeze_task(task, test_bit(CGRP_FREEZE, &dst->flags));
+}
+
+void cgroup_freezer_frozen_exit(struct task_struct *task)
+{
+	struct cgroup *cgrp = task_dfl_cgroup(task);
+
+	lockdep_assert_held(&css_set_lock);
+
+	cgroup_dec_frozen_cnt(cgrp);
+	cgroup_update_frozen(cgrp);
+}
+
+void cgroup_freeze(struct cgroup *cgrp, bool freeze)
+{
+	struct cgroup_subsys_state *css;
+	struct cgroup *dsct;
+	bool applied = false;
+
+	lockdep_assert_held(&cgroup_mutex);
+
+	/*
+	 * Nothing changed? Just exit.
+	 */
+	if (cgrp->freezer.freeze == freeze)
+		return;
+
+	cgrp->freezer.freeze = freeze;
+
+	/*
+	 * Propagate changes downwards the cgroup tree.
+	 */
+	cgroup_for_each_live_descendant_pre(dsct, css, cgrp) {
+		if (freeze) {
+			dsct->freezer.e_freeze++;
+			/*
+			 * Already frozen because of ancestor's settings?
+			 */
+			if (dsct->freezer.e_freeze > 1)
+				continue;
+		} else {
+			dsct->freezer.e_freeze--;
+			/*
+			 * Still frozen because of ancestor's settings?
+			 */
+			if (dsct->freezer.e_freeze > 0)
+				continue;
+
+			WARN_ON_ONCE(dsct->freezer.e_freeze < 0);
+		}
+
+		/*
+		 * Do change actual state: freeze or unfreeze.
+		 */
+		cgroup_do_freeze(dsct, freeze);
+		applied = true;
+	}
+
+	/*
+	 * Even if the actual state hasn't changed, let's notify a user.
+	 * The state can be enforced by an ancestor cgroup: the cgroup
+	 * can already be in the desired state or it can be locked in the
+	 * opposite state, so that the transition will never happen.
+	 * In both cases it's better to notify a user, that there is
+	 * nothing to wait for.
+	 */
+	if (!applied)
+		cgroup_file_notify(&cgrp->events_file);
+}
+
+static int cgroup_freeze_show(struct seq_file *seq, void *v)
+{
+	struct cgroup *cgrp = seq_css(seq)->cgroup;
+
+	seq_printf(seq, "%d\n", cgrp->freezer.freeze);
+
+	return 0;
+}
+
+static ssize_t cgroup_freeze_write(struct kernfs_open_file *of,
+				   char *buf, size_t nbytes, loff_t off)
+{
+	struct cgroup *cgrp;
+	ssize_t ret;
+	int freeze;
+
+	ret = kstrtoint(strstrip(buf), 0, &freeze);
+	if (ret)
+		return ret;
+
+	if (freeze < 0 || freeze > 1)
+		return -ERANGE;
+
+	cgrp = cgroup_kn_lock_live(of->kn, false);
+	if (!cgrp)
+		return -ENOENT;
+
+	cgroup_freeze(cgrp, freeze);
+
+	cgroup_kn_unlock(of->kn);
+
+	return nbytes;
+}
+
 /* cgroup core interface files for the default hierarchy */
 static struct cftype cgroup_dfl_base_files[] = {
 	{
@@ -5152,6 +5516,12 @@ static struct cftype cgroup_dfl_base_files[] = {
 		.flags = CFTYPE_NOT_ON_ROOT,
 		.file_offset = offsetof(struct cgroup, events_file),
 		.seq_show = cgroup_events_show,
+	},
+	{
+		.name = "cgroup.freeze",
+		.flags = CFTYPE_NOT_ON_ROOT,
+		.seq_show = cgroup_freeze_show,
+		.write = cgroup_freeze_write,
 	},
 	{
 		.name = "cgroup.kill",
@@ -5534,8 +5904,31 @@ static struct cgroup *cgroup_create(struct cgroup *parent)
 	if (ret)
 		goto out_idr_free;
 
-	for (tcgrp = cgrp; tcgrp; tcgrp = cgroup_parent(tcgrp))
+	/*
+	 * New cgroup inherits effective freeze counter, and
+	 * if the parent has to be frozen, the child has too.
+	 */
+	cgrp->freezer.e_freeze = parent->freezer.e_freeze;
+	if (cgrp->freezer.e_freeze)
+		set_bit(CGRP_FROZEN, &cgrp->flags);
+
+	spin_lock_irq(&css_set_lock);
+	for (tcgrp = cgrp; tcgrp; tcgrp = cgroup_parent(tcgrp)) {
 		cgrp->ancestor_ids[tcgrp->level] = tcgrp->id;
+
+		if (tcgrp != cgrp) {
+			tcgrp->nr_descendants++;
+
+			/*
+			 * If the new cgroup is frozen, all ancestor cgroups
+			 * get a new frozen descendant, but their state can't
+			 * change because of this.
+			 */
+			if (cgrp->freezer.e_freeze)
+				tcgrp->freezer.nr_frozen_descendants++;
+		}
+	}
+	spin_unlock_irq(&css_set_lock);
 
 	if (notify_on_release(parent))
 		set_bit(CGRP_NOTIFY_ON_RELEASE, &cgrp->flags);
@@ -5750,6 +6143,7 @@ static int cgroup_destroy_locked(struct cgroup *cgrp)
 {
 	struct cgroup_subsys_state *css;
 	struct cgrp_cset_link *link;
+	struct cgroup *tcgrp;
 	int ssid;
 
 	lockdep_assert_held(&cgroup_mutex);
@@ -5778,6 +6172,16 @@ static int cgroup_destroy_locked(struct cgroup *cgrp)
 	cgrp->self.flags &= ~CSS_ONLINE;
 
 	spin_lock_irq(&css_set_lock);
+	for (tcgrp = cgroup_parent(cgrp); tcgrp; tcgrp = cgroup_parent(tcgrp)) {
+		tcgrp->nr_descendants--;
+		tcgrp->nr_dying_descendants++;
+		/*
+		 * If the dying cgroup is frozen, decrease frozen descendants
+		 * counters of ancestor cgroups.
+		 */
+		if (test_bit(CGRP_FROZEN, &cgrp->flags))
+			tcgrp->freezer.nr_frozen_descendants--;
+	}
 	list_for_each_entry(link, &cgrp->cset_links, cset_link)
 		link->cset->dead = true;
 	spin_unlock_irq(&css_set_lock);
@@ -6262,6 +6666,26 @@ void cgroup_post_fork(struct task_struct *child)
 			get_css_set(cset);
 			css_set_move_task(child, NULL, cset, false);
 		}
+
+		/*
+		 * If the cgroup has to be frozen, the new task has too.
+		 * Let's set the JOBCTL_TRAP_FREEZE jobctl bit to get
+		 * the task into the frozen state.
+		 */
+		if (unlikely(cgroup_task_freeze(child))) {
+			spin_lock(&child->sighand->siglock);
+			WARN_ON_ONCE(child->frozen);
+			child->jobctl |= JOBCTL_TRAP_FREEZE;
+			spin_unlock(&child->sighand->siglock);
+
+			/*
+			 * Calling cgroup_update_frozen() isn't required here,
+			 * because it will be called anyway a bit later
+			 * from do_freezer_trap(). So we avoid cgroup's
+			 * transient switch from the frozen state and back.
+			 */
+		}
+
 		spin_unlock_irq(&css_set_lock);
 	}
 
@@ -6309,6 +6733,12 @@ void cgroup_exit(struct task_struct *tsk)
 	if (!list_empty(&tsk->cg_list)) {
 		spin_lock_irq(&css_set_lock);
 		css_set_move_task(tsk, cset, NULL, false);
+
+		if (unlikely(cgroup_task_frozen(tsk)))
+			cgroup_freezer_frozen_exit(tsk);
+		else if (unlikely(cgroup_task_freeze(tsk)))
+			cgroup_update_frozen(task_dfl_cgroup(tsk));
+
 		spin_unlock_irq(&css_set_lock);
 	} else {
 		get_css_set(cset);
