@@ -18,6 +18,7 @@
  */
 #include <linux/mfd/samsung/s2mu004.h>
 #include "include/charger/s2mu004_charger.h"
+#include <linux/delay.h>
 #include <linux/version.h>
 #include <linux/of_gpio.h>
 #ifdef CONFIG_USB_HOST_NOTIFY
@@ -257,9 +258,9 @@ static void s2mu004_enable_charger_switch(struct s2mu004_charger_data *charger, 
 #endif
 		/* forced ASYNC */
 		s2mu004_update_reg(charger->i2c, 0x30, 0x03, 0x03);
-		mdelay(30);
+		msleep(30);
 		s2mu004_update_reg(charger->i2c, S2MU004_CHG_CTRL0, CHG_MODE, REG_MODE_MASK);
-		mdelay(100);
+		msleep(100);
 		/* Auto SYNC to ASYNC - default */
 		s2mu004_update_reg(charger->i2c, 0x30, 0x01, 0x03);
 		/* async off */
@@ -272,11 +273,11 @@ static void s2mu004_enable_charger_switch(struct s2mu004_charger_data *charger, 
 			s2mu004_analog_ivr_switch(charger, DISABLE);
 		}
 #endif
-		mdelay(30);
+		msleep(30);
 		s2mu004_update_reg(charger->i2c, S2MU004_CHG_CTRL0, BUCK_MODE, REG_MODE_MASK);
 		/* async on */
 		s2mu004_update_reg(charger->i2c, 0x96, 0x01 << 3, 0x01 << 3);
-		mdelay(100);
+		msleep(100);
 	}
 }
 static void s2mu004_set_buck(struct s2mu004_charger_data *charger, int enable)
@@ -303,7 +304,7 @@ static void s2mu004_set_buck(struct s2mu004_charger_data *charger, int enable)
 		s2mu004_update_reg(charger->i2c, S2MU004_CHG_CTRL0, CHARGER_OFF_MODE, REG_MODE_MASK);
 		/* async on */
 		s2mu004_update_reg(charger->i2c, 0x96, 0x01 << 3, 0x01 << 3);
-		mdelay(100);
+		msleep(100);
 	}
 }
 static void s2mu004_set_regulation_vsys(struct s2mu004_charger_data *charger, int vsys)
@@ -1393,7 +1394,7 @@ static void s2mu004_ivr_irq_work(struct work_struct *work)
 			reduce_input_current(charger);
 			ivr_cnt = 0;
 		}
-		mdelay(50);
+		msleep(50);
 	}
 	if (charger->ivr_on) {
 		union power_supply_propval value;
