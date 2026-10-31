@@ -961,6 +961,13 @@ static int  tzdbgfs_init(struct platform_device *pdev)
 
 	for (i = 0; i < TZDBG_STATS_MAX; i++) {
 		tzdbg.debug_tz[i] = i;
+		/*
+		 * hyp_* nodes dereference hyp_diag_buf / hyp_virt_iobase,
+		 * which are only set up when qcom,hyplog-enabled is present.
+		 */
+		if (!tzdbg.is_hyplog_enabled &&
+		    (i == TZDBG_HYP_GENERAL || i == TZDBG_HYP_LOG))
+			continue;
 		dent = debugfs_create_file_unsafe(tzdbg.stat[i].name,
 				0444, dent_dir,
 				&tzdbg.debug_tz[i], &tzdbg_fops);
