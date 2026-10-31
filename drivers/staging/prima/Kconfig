@@ -41,6 +41,14 @@ config WLAN_FEATURE_11W
 	bool "Enable the WLAN 802.11w Protected Management Frames feature"
 	default n
 
+config WLAN_FEATURE_SAE
+	bool "Enable the Prima WLAN SAE (WPA3-Personal) feature"
+	default y
+
+config WLAN_AKM_SUITE_OWE
+	bool "Enable the Prima WLAN Opportunistic Wireless Encryption (OWE) feature"
+	default y
+
 config QCOM_VOWIFI_11R
 	bool "Enable Fast Transition (11r) feature"
 	default n
