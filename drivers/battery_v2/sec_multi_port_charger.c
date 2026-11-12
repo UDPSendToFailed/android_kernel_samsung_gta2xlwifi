@@ -572,6 +572,9 @@ static int sec_multi_chg_set_property(struct power_supply *psy,
 		mutex_lock(&charger->charger_mutex);
 		pr_debug("%s: POWER_SUPPLY_PROP_CURRENT_MAX(%d)\n",__func__, val->intval);
 		charger->main_current.input_current_limit = val->intval;
+		/* Re-apply to main charger in case VBUS drop reset HW regs */
+		if (charger->main_input_current != 0)
+			charger->main_input_current = -1;
 		mutex_unlock(&charger->charger_mutex);
 		sec_multi_chg_check_enable(charger);
 		break;
@@ -579,6 +582,8 @@ static int sec_multi_chg_set_property(struct power_supply *psy,
 		mutex_lock(&charger->charger_mutex);
 		pr_debug("%s: POWER_SUPPLY_PROP_CURRENT_NOW(%d)\n",__func__, val->intval);
 		charger->main_current.fast_charging_current = val->intval;
+		/* Always re-apply to main charger in case VBUS drop reset HW regs */
+		charger->main_charging_current = -1;
 		mutex_unlock(&charger->charger_mutex);
 		sec_multi_chg_check_enable(charger);
 		break;
